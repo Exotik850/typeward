@@ -4,18 +4,22 @@ pub struct Repeat<T, const MIN: usize, const MAX: usize> {
 }
 
 impl<T, const MIN: usize, const MAX: usize> Repeat<T, MIN, MAX> {
+    #[must_use] 
     pub fn items(&self) -> &[T] {
         &self.items
     }
 
+    #[must_use] 
     pub fn into_items(self) -> Vec<T> {
         self.items
     }
 
+    #[must_use] 
     pub fn len(&self) -> usize {
         self.items.len()
     }
 
+    #[must_use] 
     pub fn is_empty(&self) -> bool {
         self.items.is_empty()
     }

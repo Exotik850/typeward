@@ -52,7 +52,7 @@ where
 mod tests {
     use super::*;
     use crate::parse::Parse;
-    use crate::primitives::*;
+    use crate::primitives::prelude::AlphaString;
 
     #[test]
     fn test_collect() {

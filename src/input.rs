@@ -6,15 +6,13 @@ pub struct TokenStream<'a, T> {
     tokens: &'a [T],
 }
 
-impl<'a, T> Clone for TokenStream<'a, T> {
+impl<T> Clone for TokenStream<'_, T> {
     fn clone(&self) -> Self {
-        Self {
-            tokens: self.tokens,
-        }
+        *self
     }
 }
 
-impl<'a, T> Copy for TokenStream<'a, T> {}
+impl<T> Copy for TokenStream<'_, T> {}
 
 impl<'a, T> TokenStream<'a, T> {
     #[must_use]
@@ -68,7 +66,7 @@ pub trait Input<'a>: Copy + Sized {
         F: FnMut(char) -> bool;
 }
 
-fn utf8<'a>(bytes: &'a [u8]) -> ParseResult<&'a str> {
+fn utf8(bytes: &[u8]) -> ParseResult<&str> {
     std::str::from_utf8(bytes)
         .map_err(|err| ParseError::custom(format!("invalid UTF-8 input: {err}")))
 }
@@ -194,11 +192,10 @@ where
     }
 
     fn strip_prefix(self, prefix: &str) -> ParseResult<Option<Self>> {
-        if let Some(first) = self.tokens.first() {
-            if first.as_ref() == prefix {
+        if let Some(first) = self.tokens.first()
+            && first.as_ref() == prefix {
                 return Ok(Some(Self::new(&self.tokens[1..])));
             }
-        }
         Ok(None)
     }
 

@@ -33,7 +33,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{parse::Parse, primitives::*};
+    use crate::{parse::Parse, primitives::prelude::*};
 
     #[test]
     fn test_not() {

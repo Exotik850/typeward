@@ -110,7 +110,9 @@ where
     B: Parse<'a, I>,
 {
     fn parse(input: I) -> ParseResult<(Self, I)> {
-        if let Ok((a, rest)) = A::parse(input) { Ok((Or::Left(a), rest)) } else {
+        if let Ok((a, rest)) = A::parse(input) {
+            Ok((Or::Left(a), rest))
+        } else {
             let (b, rest) = B::parse(input)?;
             Ok((Or::Right(b), rest))
         }
@@ -150,7 +152,7 @@ pub type Alt<A, B> = Or<A, B>;
 
 #[cfg(test)]
 mod tests {
-    use crate::primitives::*;
+    use crate::primitives::prelude::*;
 
     use super::*;
 

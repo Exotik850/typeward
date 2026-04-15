@@ -88,7 +88,7 @@ pub type CommaSeparated<T> = Separated<T, Comma>;
 
 #[cfg(test)]
 mod tests {
-    use crate::{parse::Parse, primitives::AlphaString};
+    use crate::{parse::Parse, primitives::filtered::AlphaString};
 
     use super::*;
 

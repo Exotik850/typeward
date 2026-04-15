@@ -1,8 +1,4 @@
-use crate::{
-    error::ParseError,
-    input::Input,
-    parse::Parse,
-};
+use crate::{error::ParseError, input::Input, parse::Parse};
 
 /// A trait for types that represent a specific token string value.
 ///

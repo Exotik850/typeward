@@ -1,5 +1,5 @@
 use crate::error::ParseResult;
-use crate::literals::{LParen, RParen, LBracket, RBracket, LBrace, RBrace};
+use crate::literals::{LBrace, LBracket, LParen, RBrace, RBracket, RParen};
 use crate::parse::Parse;
 
 // ============================================================================
@@ -72,7 +72,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::primitives::*;
+    use crate::primitives::prelude::AlphaString;
 
     use super::*;
 

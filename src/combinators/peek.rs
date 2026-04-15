@@ -18,7 +18,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{combinators::and::And, primitives::AlphaString};
+    use crate::{combinators::and::And, primitives::filtered::AlphaString};
 
     use super::*;
 
