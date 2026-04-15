@@ -1,25 +1,27 @@
+use crate::parse::Parse;
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Repeat<T, const MIN: usize, const MAX: usize> {
     items: Vec<T>,
 }
 
 impl<T, const MIN: usize, const MAX: usize> Repeat<T, MIN, MAX> {
-    #[must_use] 
+    #[must_use]
     pub fn items(&self) -> &[T] {
         &self.items
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn into_items(self) -> Vec<T> {
         self.items
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn len(&self) -> usize {
         self.items.len()
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.items.is_empty()
     }
@@ -58,10 +60,84 @@ where
     }
 }
 
+pub type MaxN<T, const N: usize> = Repeat<T, 0, N>;
+pub type MinN<T, const N: usize> = Repeat<T, N, { usize::MAX }>;
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct RepeatUntil<T, U> {
+    items: Vec<T>,
+    _marker: std::marker::PhantomData<U>,
+}
+
+impl<T, U> RepeatUntil<T, U> {
+    #[must_use]
+    pub fn items(&self) -> &[T] {
+        &self.items
+    }
+
+    #[must_use]
+    pub fn into_items(self) -> Vec<T> {
+        self.items
+    }
+
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.items.len()
+    }
+
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.items.is_empty()
+    }
+}
+
+impl<'a, T, U, I> Parse<'a, I> for RepeatUntil<T, U>
+where
+    I: crate::input::Input<'a>,
+    T: Parse<'a, I>,
+    U: Parse<'a, I>,
+{
+    fn parse(input: I) -> crate::prelude::ParseResult<(Self, I)> {
+        // repeatedly parse T until U succeeds, but do not consume the input for U
+        let mut items = Vec::new();
+        let mut rest = input;
+
+        loop {
+            if let Ok((_, _)) = U::parse(rest) {
+                break;
+            }
+
+            match T::parse(rest) {
+                Ok((item, new_rest)) => {
+                    crate::collections::ensure_progress(rest, new_rest, "RepeatUntil")?;
+                    items.push(item);
+                    rest = new_rest;
+                }
+                Err(e) => {
+                    return Err(crate::error::ParseError::custom(format!(
+                        "Expected T or U, but got error: {}",
+                        e
+                    )));
+                }
+            }
+        }
+        Ok((
+            RepeatUntil {
+                items,
+                _marker: std::marker::PhantomData,
+            },
+            rest,
+        ))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parse::Parse;
+    use crate::{
+        parse::Parse,
+        primitives::prelude::{AlphaNumString, DigitStr},
+    };
 
     #[test]
     fn test_repeat_max_limit() {
@@ -82,5 +158,13 @@ mod tests {
     fn test_repeat_rejects_non_consuming_parser() {
         let result = Repeat::<(), 0, 5>::parse("abc");
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_repeat_until() {
+        let input = "abc123def456ghi";
+        let (result, rest) = RepeatUntil::<AlphaNumString, DigitStr<'_>>::parse(input).unwrap();
+        assert_eq!(result.into_items(), vec!["abc"]);
+        assert_eq!(rest, "123def456ghi");
     }
 }
