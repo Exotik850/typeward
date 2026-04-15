@@ -75,3 +75,7 @@ mod tests {
         assert_eq!(err, ParseError::Custom(Cow::Borrowed("test error")));
     }
 }
+
+pub fn custom<S: Into<Cow<'static, str>>>(msg: S) -> ParseError {
+    ParseError::Custom(msg.into())
+}

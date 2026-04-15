@@ -7,27 +7,27 @@ pub struct Separated<T, S> {
 }
 
 impl<T, S> Separated<T, S> {
-    #[must_use] 
+    #[must_use]
     pub fn new(items: Vec<T>, separators: Vec<S>) -> Self {
         Self { items, separators }
     }
-    #[must_use] 
+    #[must_use]
     pub fn items(&self) -> &[T] {
         &self.items
     }
-    #[must_use] 
+    #[must_use]
     pub fn separators(&self) -> &[S] {
         &self.separators
     }
-    #[must_use] 
+    #[must_use]
     pub fn into_items(self) -> Vec<T> {
         self.items
     }
-    #[must_use] 
+    #[must_use]
     pub fn into_separators(self) -> Vec<S> {
         self.separators
     }
-    #[must_use] 
+    #[must_use]
     pub fn into_parts(self) -> (Vec<T>, Vec<S>) {
         (self.items, self.separators)
     }
@@ -45,6 +45,11 @@ where
 
         // Parse the first item
         let (first_item, remaining) = T::parse(input)?;
+        if input.len() == remaining.len() {
+            return Err(crate::error::ParseError::custom(
+                "Separated item parser matched without consuming input",
+            ));
+        }
         items.push(first_item);
         input = remaining;
 
@@ -52,6 +57,11 @@ where
             // Try to parse a separator
             match S::parse(input) {
                 Ok((sep, remaining)) => {
+                    if input.len() == remaining.len() {
+                        return Err(crate::error::ParseError::custom(
+                            "Separated separator parser matched without consuming input",
+                        ));
+                    }
                     separators.push(sep);
                     input = remaining;
                 }
@@ -60,6 +70,11 @@ where
 
             // Parse the next item
             let (item, remaining) = T::parse(input)?;
+            if input.len() == remaining.len() {
+                return Err(crate::error::ParseError::custom(
+                    "Separated item parser matched without consuming input",
+                ));
+            }
             items.push(item);
             input = remaining;
         }
@@ -69,3 +84,30 @@ where
 }
 
 pub type CommaSeparated<T> = Separated<T, Comma>;
+
+#[cfg(test)]
+mod tests {
+    use crate::{parse::Parse, primitives::AlphaString};
+
+    use super::*;
+
+    #[test]
+    fn separated_parses_items_and_separators() {
+        let (result, rest) = CommaSeparated::<AlphaString>::parse("a,b,c;").unwrap();
+        assert_eq!(result.items().len(), 3);
+        assert_eq!(result.separators().len(), 2);
+        assert_eq!(rest, ";");
+    }
+
+    #[test]
+    fn separated_rejects_non_consuming_item() {
+        let result = Separated::<(), char>::parse("abc");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn separated_rejects_non_consuming_separator() {
+        let result = Separated::<char, ()>::parse("abc");
+        assert!(result.is_err());
+    }
+}

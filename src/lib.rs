@@ -12,6 +12,7 @@
 //! - [`parse`] — The core [`Parse`] trait and [`parse_complete`] helper
 //! - [`primitives`] — `Parse` implementations for built-in types
 //! - [`combinators`] — Parser combinators like [`Delimited`]
+//! - [`collections`] — Repetition/collection combinators like [`Many0`] and [`Repeat`]
 
 pub mod collections;
 pub mod combinators;
