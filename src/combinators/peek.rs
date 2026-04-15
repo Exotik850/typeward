@@ -35,7 +35,7 @@ mod tests {
         let input = "42abc";
         let (result, rest) = And::<i64, Peek<AlphaString>>::parse(input).unwrap();
         assert_eq!(result.left, 42);
-        assert_eq!(&(*result.right.parser), "abc");
+        assert_eq!(result.right.parser, "abc");
         assert_eq!(rest, "abc");
     }
 }

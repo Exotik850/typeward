@@ -96,7 +96,7 @@ mod tests {
     fn test_delimited_brackets() {
         let input = "[hello]";
         let (result, rest) = Bracketed::<AlphaString>::parse(input).unwrap();
-        assert_eq!(&(*result.inner), "hello");
+        assert_eq!(result.inner, "hello");
         assert_eq!(rest, "");
     }
 

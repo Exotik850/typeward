@@ -4,7 +4,7 @@ use std::borrow::Cow;
 #[macro_export]
 macro_rules! filter_str {
     ($name:ident, $filter:expr) => {
-        #[derive(Debug, PartialEq, Eq, Clone, Hash, Default, PartialOrd, Ord)]
+        #[derive(Debug, Eq, Clone, Hash, Default, PartialOrd, Ord)]
         pub struct $name<S>
         where
             S: AsRef<str>,
@@ -16,6 +16,19 @@ macro_rules! filter_str {
             type Target = str;
             fn deref(&self) -> &Self::Target {
                 self.value.as_ref()
+            }
+        }
+
+        impl<S: AsRef<str>> AsRef<str> for $name<S> {
+            fn as_ref(&self) -> &str {
+                self.value.as_ref()
+            }
+        }
+
+        // partial eq impl to compare with &str
+        impl<S: AsRef<str>, O: AsRef<str>> PartialEq<O> for $name<S> {
+            fn eq(&self, other: &O) -> bool {
+                self.value.as_ref() == other.as_ref()
             }
         }
 
