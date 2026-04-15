@@ -43,7 +43,7 @@ where
         } else {
             Err(ParseError::UnexpectedToken {
                 expected: Self::VALUE,
-                found: input.display(),
+                found: input.display().into_owned(),
             })
         }
     }
