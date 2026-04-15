@@ -4,9 +4,11 @@ pub mod filtered;
 pub mod float;
 pub mod int;
 pub mod str;
+pub mod basic;
 
 pub mod prelude {
     pub use super::filtered::*;
+    pub use super::basic::*;
 }
 
 impl<'a, I> Parse<'a, I> for bool
