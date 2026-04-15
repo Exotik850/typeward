@@ -7,21 +7,27 @@ pub struct Separated<T, S> {
 }
 
 impl<T, S> Separated<T, S> {
+    #[must_use] 
     pub fn new(items: Vec<T>, separators: Vec<S>) -> Self {
         Self { items, separators }
     }
+    #[must_use] 
     pub fn items(&self) -> &[T] {
         &self.items
     }
+    #[must_use] 
     pub fn separators(&self) -> &[S] {
         &self.separators
     }
+    #[must_use] 
     pub fn into_items(self) -> Vec<T> {
         self.items
     }
+    #[must_use] 
     pub fn into_separators(self) -> Vec<S> {
         self.separators
     }
+    #[must_use] 
     pub fn into_parts(self) -> (Vec<T>, Vec<S>) {
         (self.items, self.separators)
     }

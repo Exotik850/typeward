@@ -23,12 +23,11 @@ impl fmt::Display for ParseError {
             ParseError::UnexpectedToken { expected, found } => {
                 write!(
                     f,
-                    "unexpected token: expected '{}', found '{}'",
-                    expected, found
+                    "unexpected token: expected '{expected}', found '{found}'"
                 )
             }
             ParseError::UnexpectedEOF => write!(f, "unexpected end of input"),
-            ParseError::Custom(msg) => write!(f, "{}", msg),
+            ParseError::Custom(msg) => write!(f, "{msg}"),
         }
     }
 }

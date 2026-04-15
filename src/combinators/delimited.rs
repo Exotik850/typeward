@@ -1,5 +1,5 @@
 use crate::error::ParseResult;
-use crate::literals::*;
+use crate::literals::{LParen, RParen, LBracket, RBracket, LBrace, RBrace};
 use crate::parse::Parse;
 
 // ============================================================================
@@ -51,7 +51,6 @@ impl<S, E, I> Delimited<S, E, I> {
         &mut self.inner
     }
 }
-
 
 impl<'a, S, E, I> Parse<'a> for Delimited<S, E, I>
 where

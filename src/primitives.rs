@@ -18,8 +18,7 @@ impl<'a> Parse<'a> for &'a str {
         let split_idx = input.find(char::is_whitespace).unwrap_or(input.len());
         if split_idx == 0 {
             return Err(crate::error::ParseError::custom(format!(
-                "expected string, found '{}'",
-                input
+                "expected string, found '{input}'"
             )));
         }
         Ok(input.split_at(split_idx))
@@ -66,7 +65,7 @@ macro_rules! filter_str {
                 let end_idx = input.find(|c| !$filter(c)).unwrap_or(input.len());
                 let s = &input[..end_idx];
                 if s.is_empty() {
-                    return Err(crate::error::ParseError::custom(format!(
+                    return Err($crate::error::ParseError::custom(format!(
                         "expected {}, found '{}'",
                         stringify!($name),
                         input
@@ -264,8 +263,7 @@ impl<'a> Parse<'a> for bool {
             Ok((false, &input[5..]))
         } else {
             Err(crate::error::ParseError::custom(format!(
-                "expected 'true' or 'false', found '{}'",
-                input
+                "expected 'true' or 'false', found '{input}'"
             )))
         }
     }

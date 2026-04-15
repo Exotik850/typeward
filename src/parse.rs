@@ -41,8 +41,7 @@ pub fn parse_complete<'a, T: Parse<'a>>(input: &'a str) -> ParseResult<T> {
         Ok(result)
     } else {
         Err(ParseError::custom(format!(
-            "unexpected trailing input: '{}'",
-            trimmed
+            "unexpected trailing input: '{trimmed}'"
         )))
     }
 }

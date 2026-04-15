@@ -37,8 +37,7 @@ macro_rules! define_tokens {
 // Blanket implementation for types that implement Token + Default
 impl<'a, T: Token + Default> Parse<'a> for T {
     fn parse(input: &'a str) -> Result<(Self, &'a str), ParseError> {
-        if input.starts_with(Self::VALUE) {
-            let remaining = &input[Self::VALUE.len()..];
+        if let Some(remaining) = input.strip_prefix(Self::VALUE) {
             Ok((Self::default(), remaining))
         } else {
             Err(ParseError::UnexpectedToken {
