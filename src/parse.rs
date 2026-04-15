@@ -18,6 +18,18 @@ impl Parse<'_> for () {
     }
 }
 
+impl<'a, T> Parse<'a> for Option<T>
+where
+    T: Parse<'a>,
+{
+    fn parse(input: &'a str) -> ParseResult<(Self, &'a str)> {
+        match T::parse(input) {
+            Ok((value, remaining)) => Ok((Some(value), remaining)),
+            Err(_) => Ok((None, input)),
+        }
+    }
+}
+
 /// Convenience function to parse complete input, ensuring everything is consumed.
 ///
 /// This function parses the input and verifies that all meaningful content
