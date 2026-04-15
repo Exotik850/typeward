@@ -2,8 +2,17 @@ pub mod collect;
 pub mod many;
 pub mod repeat;
 
-pub(crate) fn ensure_progress(before: &str, after: &str, combinator: &str) -> crate::error::ParseResult<()> {
-    if before.len() == after.len() {
+use crate::input::Input;
+
+pub(crate) fn ensure_progress<'a, I>(
+    before: I,
+    after: I,
+    combinator: &str,
+) -> crate::error::ParseResult<()>
+where
+    I: Input<'a>,
+{
+    if before.input_len() == after.input_len() {
         return Err(crate::error::ParseError::custom(format!(
             "{combinator} parser matched without consuming input"
         )));

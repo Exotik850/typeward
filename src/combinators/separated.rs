@@ -33,19 +33,20 @@ impl<T, S> Separated<T, S> {
     }
 }
 
-impl<'a, T, S> Parse<'a> for Separated<T, S>
+impl<'a, I, T, S> Parse<'a, I> for Separated<T, S>
 where
-    T: Parse<'a>,
-    S: Parse<'a>,
+    I: crate::input::Input<'a>,
+    T: Parse<'a, I>,
+    S: Parse<'a, I>,
 {
-    fn parse(input: &'a str) -> ParseResult<(Self, &'a str)> {
+    fn parse(input: I) -> ParseResult<(Self, I)> {
         let mut items = Vec::new();
         let mut separators = Vec::new();
         let mut input = input;
 
         // Parse the first item
         let (first_item, remaining) = T::parse(input)?;
-        if input.len() == remaining.len() {
+        if input.input_len() == remaining.input_len() {
             return Err(crate::error::ParseError::custom(
                 "Separated item parser matched without consuming input",
             ));
@@ -57,7 +58,7 @@ where
             // Try to parse a separator
             match S::parse(input) {
                 Ok((sep, remaining)) => {
-                    if input.len() == remaining.len() {
+                    if input.input_len() == remaining.input_len() {
                         return Err(crate::error::ParseError::custom(
                             "Separated separator parser matched without consuming input",
                         ));
@@ -70,7 +71,7 @@ where
 
             // Parse the next item
             let (item, remaining) = T::parse(input)?;
-            if input.len() == remaining.len() {
+            if input.input_len() == remaining.input_len() {
                 return Err(crate::error::ParseError::custom(
                     "Separated item parser matched without consuming input",
                 ));

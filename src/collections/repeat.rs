@@ -21,11 +21,13 @@ impl<T, const MIN: usize, const MAX: usize> Repeat<T, MIN, MAX> {
     }
 }
 
-impl<'a, T, const MIN: usize, const MAX: usize> crate::parse::Parse<'a> for Repeat<T, MIN, MAX>
+impl<'a, I, T, const MIN: usize, const MAX: usize> crate::parse::Parse<'a, I>
+    for Repeat<T, MIN, MAX>
 where
-    T: crate::parse::Parse<'a>,
+    I: crate::input::Input<'a>,
+    T: crate::parse::Parse<'a, I>,
 {
-    fn parse(input: &'a str) -> crate::error::ParseResult<(Self, &'a str)> {
+    fn parse(input: I) -> crate::error::ParseResult<(Self, I)> {
         let mut items = Vec::new();
         let mut rest = input;
 
@@ -61,7 +63,7 @@ mod tests {
     fn test_repeat_max_limit() {
         let input = "abc123def456ghi";
         let (result, rest) = Repeat::<char, 3, 5>::parse(input).unwrap();
-        assert_eq!(result.into_items(), "abc123".chars().collect::<Vec<_>>());
+        assert_eq!(result.into_items(), "abc12".chars().collect::<Vec<_>>());
         assert_eq!(rest, "3def456ghi");
     }
 

@@ -4,12 +4,13 @@ pub struct Not<S, P> {
     _marker: std::marker::PhantomData<P>,
 }
 
-impl<'a, S, P> crate::parse::Parse<'a> for Not<S, P>
+impl<'a, I, S, P> crate::parse::Parse<'a, I> for Not<S, P>
 where
-    S: crate::parse::Parse<'a>,
-    P: crate::parse::Parse<'a>,
+    I: crate::input::Input<'a>,
+    S: crate::parse::Parse<'a, I>,
+    P: crate::parse::Parse<'a, I>,
 {
-    fn parse(input: &'a str) -> crate::error::ParseResult<(Self, &'a str)> {
+    fn parse(input: I) -> crate::error::ParseResult<(Self, I)> {
         let (value, rest) = S::parse(input)?;
         if P::parse(input).is_ok() {
             Err(crate::error::custom(format!(

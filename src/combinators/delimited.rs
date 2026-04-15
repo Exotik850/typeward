@@ -52,21 +52,19 @@ impl<S, E, I> Delimited<S, E, I> {
     }
 }
 
-impl<'a, S, E, I> Parse<'a> for Delimited<S, E, I>
+impl<'a, In, S, E, I> Parse<'a, In> for Delimited<S, E, I>
 where
-    S: Parse<'a>,
-    E: Parse<'a>,
-    I: Parse<'a>,
+    In: crate::input::Input<'a>,
+    S: Parse<'a, In>,
+    E: Parse<'a, In>,
+    I: Parse<'a, In>,
 {
-    fn parse(input: &'a str) -> ParseResult<(Self, &'a str)> {
-        // Parse start delimiter
+    fn parse(input: In) -> ParseResult<(Self, In)> {
         let (start, remaining) = S::parse(input)?;
-
-        // Parse inner content
-        let (inner, remaining) = I::parse(remaining.trim_start())?;
-
-        // Parse end delimiter
-        let (end, remaining) = E::parse(remaining.trim_start())?;
+        let remaining = remaining.trim_start()?;
+        let (inner, remaining) = I::parse(remaining)?;
+        let remaining = remaining.trim_start()?;
+        let (end, remaining) = E::parse(remaining)?;
 
         Ok((Delimited { start, end, inner }, remaining))
     }

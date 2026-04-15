@@ -47,4 +47,30 @@ define_tokens!(
     Lt, "<";
     /// The `>` greater-than token.
     Gt, ">";
+    /// The `?` question mark token.
+    Question, "?";
+    /// The `@` at symbol token.
+    At, "@";
+    /// The `#` hash symbol token.
+    Hash, "#";
+    /// The `$` dollar sign token.
+    Dollar, "$";
+    /// The `%` percent sign token.
+    Percent, "%";
+    /// The `^` caret token.
+    Caret, "^";
+    /// The `\t` tab character token.
+    Tab, "\t";
+    /// The `\n` newline character token.
+    Newline, "\n";
+    /// The `\r` carriage return character token.
+    CarriageReturn, "\r";
+    /// The `\0` null character token.
+    NullChar, "\0";
+    /// The `\` backslash character token.
+    Backslash, "\\";
+    /// The `"` double quote character token.
+    DoubleQuote, "\"";
+    /// The `\r\n` Clrf newline sequence token.
+    CrLf, "\r\n";
 );

@@ -21,11 +21,12 @@ impl<T> Many0<T> {
     }
 }
 
-impl<'a, T> crate::parse::Parse<'a> for Many0<T>
+impl<'a, I, T> crate::parse::Parse<'a, I> for Many0<T>
 where
-    T: crate::parse::Parse<'a>,
+    I: crate::input::Input<'a>,
+    T: crate::parse::Parse<'a, I>,
 {
-    fn parse(input: &'a str) -> crate::error::ParseResult<(Self, &'a str)> {
+    fn parse(input: I) -> crate::error::ParseResult<(Self, I)> {
         let mut items = Vec::new();
         let mut rest = input;
 
@@ -67,11 +68,12 @@ impl<T> Many1<T> {
     }
 }
 
-impl<'a, T> crate::parse::Parse<'a> for Many1<T>
+impl<'a, I, T> crate::parse::Parse<'a, I> for Many1<T>
 where
-    T: crate::parse::Parse<'a>,
+    I: crate::input::Input<'a>,
+    T: crate::parse::Parse<'a, I>,
 {
-    fn parse(input: &'a str) -> crate::error::ParseResult<(Self, &'a str)> {
+    fn parse(input: I) -> crate::error::ParseResult<(Self, I)> {
         let (first, mut rest) = T::parse(input)?;
         crate::collections::ensure_progress(input, rest, "Many1")?;
 

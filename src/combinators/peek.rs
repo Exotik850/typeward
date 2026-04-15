@@ -5,11 +5,12 @@ pub struct Peek<P> {
     parser: P,
 }
 
-impl<'a, P> Parse<'a> for Peek<P>
+impl<'a, I, P> Parse<'a, I> for Peek<P>
 where
-    P: Parse<'a>,
+    I: crate::input::Input<'a>,
+    P: Parse<'a, I>,
 {
-    fn parse(input: &'a str) -> ParseResult<(Self, &'a str)> {
+    fn parse(input: I) -> ParseResult<(Self, I)> {
         let (parser, _) = P::parse(input)?;
         Ok((Peek { parser }, input))
     }

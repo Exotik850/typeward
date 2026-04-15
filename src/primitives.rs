@@ -2,38 +2,51 @@ use std::borrow::Cow;
 use std::ops::Deref;
 
 use crate::error::ParseResult;
+use crate::input::Input;
 use crate::parse::Parse;
 
 // ============================================================================
 // String-like types
 // ============================================================================
 
-impl<'a> Parse<'a> for &'a str {
-    fn parse(input: &'a str) -> ParseResult<(Self, &'a str)> {
-        if input.is_empty() {
+impl<'a, I> Parse<'a, I> for &'a str
+where
+    I: Input<'a>,
+{
+    fn parse(input: I) -> ParseResult<(Self, I)> {
+        if input.is_empty()? {
             return Err(crate::error::ParseError::custom(
                 "expected string, found end of input",
             ));
         }
-        let split_idx = input.find(char::is_whitespace).unwrap_or(input.len());
-        if split_idx == 0 {
+
+        let (token, rest) = input.take_while(|c| !c.is_whitespace())?;
+        if token.is_empty() {
             return Err(crate::error::ParseError::custom(format!(
-                "expected string, found '{input}'"
+                "expected string, found '{}'",
+                input.display()
             )));
         }
-        Ok(input.split_at(split_idx))
+
+        Ok((token, rest))
     }
 }
 
-impl<'a> Parse<'a> for String {
-    fn parse(input: &'a str) -> ParseResult<(Self, &'a str)> {
+impl<'a, I> Parse<'a, I> for String
+where
+    I: Input<'a>,
+{
+    fn parse(input: I) -> ParseResult<(Self, I)> {
         let (s, rest) = <&str>::parse(input)?;
         Ok((s.to_string(), rest))
     }
 }
 
-impl<'a> Parse<'a> for Cow<'a, str> {
-    fn parse(input: &'a str) -> ParseResult<(Self, &'a str)> {
+impl<'a, I> Parse<'a, I> for Cow<'a, str>
+where
+    I: Input<'a>,
+{
+    fn parse(input: I) -> ParseResult<(Self, I)> {
         let (result, rest) = <&str>::parse(input)?;
         Ok((Cow::Borrowed(result), rest))
     }
@@ -57,21 +70,21 @@ macro_rules! filter_str {
             }
         }
 
-        impl<'a, S> Parse<'a> for $name<S>
+        impl<'a, I, S> $crate::parse::Parse<'a, I> for $name<S>
         where
+            I: $crate::input::Input<'a>,
             S: AsRef<str> + From<&'a str>,
         {
-            fn parse(input: &'a str) -> ParseResult<(Self, &'a str)> {
-                let end_idx = input.find(|c| !$filter(c)).unwrap_or(input.len());
-                let s = &input[..end_idx];
+            fn parse(input: I) -> $crate::error::ParseResult<(Self, I)> {
+                let (s, rest) = input.take_while($filter)?;
                 if s.is_empty() {
                     return Err($crate::error::ParseError::custom(format!(
                         "expected {}, found '{}'",
                         stringify!($name),
-                        input
+                        input.display()
                     )));
                 }
-                Ok(($name { value: S::from(s) }, &input[end_idx..]))
+                Ok(($name { value: S::from(s) }, rest))
             }
         }
 
@@ -114,14 +127,17 @@ filter_str!(NonAscii, |c: char| !c.is_ascii());
 macro_rules! parse_unsigned {
     ($($ty:ty),*) => {
         $(
-            impl<'a> Parse<'a> for $ty {
-                fn parse(input: &'a str) -> ParseResult<(Self, &'a str)> {
+            impl<'a, I> Parse<'a, I> for $ty
+            where
+                I: Input<'a>,
+            {
+                fn parse(input: I) -> ParseResult<(Self, I)> {
                     let (result, rest) = Digit::<&str>::parse(input)?;
                     if result.is_empty() {
                         return Err(crate::error::ParseError::custom(format!(
                             "expected {}, found '{}'",
                             stringify!($ty),
-                            input
+                            input.display()
                         )));
                     }
                     match result.parse::<$ty>() {
@@ -143,13 +159,16 @@ parse_unsigned!(u8, u16, u32, u64, u128, usize);
 macro_rules! parse_signed {
     ($($ty:ty),*) => {
         $(
-            impl<'a> Parse<'a> for $ty {
-                fn parse(input: &'a str) -> ParseResult<(Self, &'a str)> {
-                    let input = input.trim_start();
-                    let (sign, rest) = if input.starts_with('-') {
-                        (-1, &input[1..])
-                    } else if input.starts_with('+') {
-                        (1, &input[1..])
+            impl<'a, I> Parse<'a, I> for $ty
+            where
+                I: Input<'a>,
+            {
+                fn parse(input: I) -> ParseResult<(Self, I)> {
+                    let input = input.trim_start()?;
+                    let (sign, rest) = if let Some(rest) = input.strip_prefix("-")? {
+                        (-1, rest)
+                    } else if let Some(rest) = input.strip_prefix("+")? {
+                        (1, rest)
                     } else {
                         (1, input)
                     };
@@ -158,7 +177,7 @@ macro_rules! parse_signed {
                         return Err(crate::error::ParseError::custom(format!(
                             "expected {}, found '{}'",
                             stringify!($ty),
-                            input
+                            input.display()
                         )));
                     }
                     match result.parse::<$ty>() {
@@ -180,14 +199,17 @@ parse_signed!(i8, i16, i32, i64, i128, isize);
 macro_rules! parse_float {
     ($($ty:ty),*) => {
         $(
-            impl<'a> Parse<'a> for $ty {
-                fn parse(input: &'a str) -> ParseResult<(Self, &'a str)> {
+            impl<'a, I> Parse<'a, I> for $ty
+            where
+                I: Input<'a>,
+            {
+                fn parse(input: I) -> ParseResult<(Self, I)> {
                     let (result, rest) = <&str>::parse(input)?;
                     if result.is_empty() {
                         return Err(crate::error::ParseError::custom(format!(
                             "expected {}, found '{}'",
                             stringify!($ty),
-                            input
+                            input.display()
                         )));
                     }
                     match result.parse::<$ty>() {
@@ -212,8 +234,12 @@ macro_rules! parse_filtered {
         #[derive(Debug, PartialEq, Eq, Clone, Hash, Default, PartialOrd, Ord)]
         pub struct $name<T>(pub T);
         $(
-            impl<'a> Parse<'a> for $name<$ty> {
-                fn parse(input: &'a str) -> ParseResult<(Self, &'a str)> {
+            impl<'a, I> Parse<'a, I> for $name<$ty>
+            where
+                I: Input<'a>,
+                $ty: Parse<'a, I>,
+            {
+                fn parse(input: I) -> ParseResult<(Self, I)> {
                     let (result, rest) = <$ty>::parse(input)?;
                     if !$filter(result) {
                         return Err(crate::error::ParseError::custom(format!(
@@ -255,15 +281,19 @@ parse_filtered!(NonZeroFloat, |n| n != 0.0, f32, f64);
 // Boolean
 // ============================================================================
 
-impl<'a> Parse<'a> for bool {
-    fn parse(input: &'a str) -> ParseResult<(Self, &'a str)> {
-        if input.starts_with("true") {
-            Ok((true, &input[4..]))
-        } else if input.starts_with("false") {
-            Ok((false, &input[5..]))
+impl<'a, I> Parse<'a, I> for bool
+where
+    I: Input<'a>,
+{
+    fn parse(input: I) -> ParseResult<(Self, I)> {
+        if let Some(rest) = input.strip_prefix("true")? {
+            Ok((true, rest))
+        } else if let Some(rest) = input.strip_prefix("false")? {
+            Ok((false, rest))
         } else {
             Err(crate::error::ParseError::custom(format!(
-                "expected 'true' or 'false', found '{input}'"
+                "expected 'true' or 'false', found '{}'",
+                input.display()
             )))
         }
     }
@@ -272,6 +302,7 @@ impl<'a> Parse<'a> for bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::input::TokenStream;
 
     #[test]
     fn test_i64_parse() {
@@ -341,5 +372,21 @@ mod tests {
         let (num, rest) = f64::parse(input).unwrap();
         assert!((num - 2.718).abs() < f64::EPSILON);
         assert_eq!(rest, " rest");
+    }
+
+    #[test]
+    fn test_i64_parse_bytes() {
+        let input: &[u8] = b"123 rest";
+        let (num, rest) = i64::parse(input).unwrap();
+        assert_eq!(num, 123);
+        assert_eq!(rest, b" rest");
+    }
+
+    #[test]
+    fn test_alpha_parse_token_stream() {
+        let tokens = ["hello", "world"];
+        let (word, rest) = AlphaString::parse(TokenStream::new(&tokens)).unwrap();
+        assert_eq!(word.value, "hello");
+        assert_eq!(rest.as_slice(), &["world"]);
     }
 }

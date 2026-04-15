@@ -1,5 +1,6 @@
 use crate::{
-    error::{ParseError, ParseResult},
+    error::ParseError,
+    input::Input,
     parse::Parse,
 };
 
@@ -35,14 +36,18 @@ macro_rules! define_tokens {
 }
 
 // Blanket implementation for types that implement Token + Default
-impl<'a, T: Token + Default> Parse<'a> for T {
-    fn parse(input: &'a str) -> Result<(Self, &'a str), ParseError> {
-        if let Some(remaining) = input.strip_prefix(Self::VALUE) {
+impl<'a, I, T> Parse<'a, I> for T
+where
+    I: Input<'a>,
+    T: Token + Default,
+{
+    fn parse(input: I) -> Result<(Self, I), ParseError> {
+        if let Some(remaining) = input.strip_prefix(Self::VALUE)? {
             Ok((Self::default(), remaining))
         } else {
             Err(ParseError::UnexpectedToken {
                 expected: Self::VALUE,
-                found: input.to_string(),
+                found: input.display(),
             })
         }
     }
@@ -50,19 +55,25 @@ impl<'a, T: Token + Default> Parse<'a> for T {
 
 // Explicit implementation for char (avoids conflict with blanket impl
 // since char does not implement Token)
-impl<'a> Parse<'a> for char {
-    fn parse(input: &'a str) -> Result<(Self, &'a str), ParseError> {
-        let mut chars = input.chars();
-        match chars.next() {
-            Some(c) => Ok((c, chars.as_str())),
+impl<'a, I> Parse<'a, I> for char
+where
+    I: Input<'a>,
+{
+    fn parse(input: I) -> Result<(Self, I), ParseError> {
+        match input.take_char()? {
+            Some((c, rest)) => Ok((c, rest)),
             None => Err(ParseError::UnexpectedEOF),
         }
     }
 }
 
 #[cfg(feature = "arrays")]
-impl<'a, T: Parse<'a>, const N: usize> Parse<'a> for [T; N] {
-    fn parse(mut input: &'a str) -> ParseResult<(Self, &'a str)> {
+impl<'a, I, T, const N: usize> Parse<'a, I> for [T; N]
+where
+    I: Input<'a>,
+    T: Parse<'a, I>,
+{
+    fn parse(mut input: I) -> crate::error::ParseResult<(Self, I)> {
         let arr = array_util::try_from_fn(|_| {
             let (value, rest) = T::parse(input)?;
             input = rest;

@@ -16,12 +16,13 @@ impl<T, C> Collect<T, C> {
     }
 }
 
-impl<'a, T, C> Parse<'a> for Collect<T, C>
+impl<'a, I, T, C> Parse<'a, I> for Collect<T, C>
 where
-    T: Parse<'a>,
+    I: crate::input::Input<'a>,
+    T: Parse<'a, I>,
     C: FromIterator<T>,
 {
-    fn parse(input: &'a str) -> ParseResult<(Self, &'a str)> {
+    fn parse(input: I) -> ParseResult<(Self, I)> {
         let mut rest = input;
 
         let iter = std::iter::from_fn(|| match T::parse(rest) {

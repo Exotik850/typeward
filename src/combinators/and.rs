@@ -33,14 +33,16 @@ impl<A, B, C> And<A, And<B, C>> {
     }
 }
 
-impl<'a, A, B> Parse<'a> for And<A, B>
+impl<'a, I, A, B> Parse<'a, I> for And<A, B>
 where
-    A: Parse<'a>,
-    B: Parse<'a>,
+    I: crate::input::Input<'a>,
+    A: Parse<'a, I>,
+    B: Parse<'a, I>,
 {
-    fn parse(input: &'a str) -> ParseResult<(Self, &'a str)> {
+    fn parse(input: I) -> ParseResult<(Self, I)> {
         let (left, remaining) = A::parse(input)?;
-        let (right, remaining) = B::parse(remaining.trim_start())?;
+        let remaining = remaining.trim_start()?;
+        let (right, remaining) = B::parse(remaining)?;
         Ok((And { left, right }, remaining))
     }
 }

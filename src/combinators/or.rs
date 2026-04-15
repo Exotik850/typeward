@@ -103,12 +103,13 @@ impl<A, B> Or<A, B> {
     }
 }
 
-impl<'a, A, B> Parse<'a> for Or<A, B>
+impl<'a, I, A, B> Parse<'a, I> for Or<A, B>
 where
-    A: Parse<'a>,
-    B: Parse<'a>,
+    I: crate::input::Input<'a>,
+    A: Parse<'a, I>,
+    B: Parse<'a, I>,
 {
-    fn parse(input: &'a str) -> ParseResult<(Self, &'a str)> {
+    fn parse(input: I) -> ParseResult<(Self, I)> {
         if let Ok((a, rest)) = A::parse(input) { Ok((Or::Left(a), rest)) } else {
             let (b, rest) = B::parse(input)?;
             Ok((Or::Right(b), rest))
