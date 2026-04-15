@@ -16,23 +16,11 @@ impl<T, S> Separated<T, S> {
     pub fn separators(&self) -> &[S] {
         &self.separators
     }
-    pub fn push(&mut self, item: T, separator: Option<S>) {
-        self.items.push(item);
-        if let Some(sep) = separator {
-            self.separators.push(sep);
-        }
-    }
     pub fn into_items(self) -> Vec<T> {
         self.items
     }
     pub fn into_separators(self) -> Vec<S> {
         self.separators
-    }
-    pub fn items_mut(&mut self) -> &mut Vec<T> {
-        &mut self.items
-    }
-    pub fn separators_mut(&mut self) -> &mut Vec<S> {
-        &mut self.separators
     }
     pub fn into_parts(self) -> (Vec<T>, Vec<S>) {
         (self.items, self.separators)
