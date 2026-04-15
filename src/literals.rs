@@ -73,4 +73,6 @@ define_tokens!(
     DoubleQuote, "\"";
     /// The `\r\n` Clrf newline sequence token.
     CrLf, "\r\n";
+    /// The ` ` space character token.
+    Space, " ";
 );

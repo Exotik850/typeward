@@ -13,7 +13,7 @@ where
             ));
         }
 
-        let (token, rest) = input.take_while(|c| !c.is_whitespace())?;
+        let (token, rest) = input.take_while(|c: char| !c.is_whitespace())?;
         if token.is_empty() {
             return Err(crate::error::ParseError::custom(format!(
                 "expected string, found '{}'",

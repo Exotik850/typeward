@@ -4,7 +4,7 @@ use crate::{error::ParseError, input::Input, parse::Parse};
 ///
 /// This is the foundational trait for defining tokens in the type system.
 /// Each token type has a constant string value that it matches against input.
-pub trait Token {
+pub trait Token: Default {
     /// The literal string value this token represents.
     const VALUE: &'static str;
 }
@@ -35,7 +35,7 @@ macro_rules! define_tokens {
 impl<'a, I, T> Parse<'a, I> for T
 where
     I: Input<'a>,
-    T: Token + Default,
+    T: Token,
 {
     fn parse(input: I) -> Result<(Self, I), ParseError> {
         if let Some(remaining) = input.strip_prefix(Self::VALUE)? {

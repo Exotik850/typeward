@@ -115,8 +115,7 @@ where
                 }
                 Err(e) => {
                     return Err(crate::error::ParseError::custom(format!(
-                        "Expected T or U, but got error: {}",
-                        e
+                        "Expected T or U, but got error: {e}"
                     )));
                 }
             }
@@ -136,7 +135,7 @@ mod tests {
     use super::*;
     use crate::{
         parse::Parse,
-        primitives::prelude::{AlphaNumString, DigitStr},
+        primitives::prelude::{AlphaString, DigitStr},
     };
 
     #[test]
@@ -163,7 +162,7 @@ mod tests {
     #[test]
     fn test_repeat_until() {
         let input = "abc123def456ghi";
-        let (result, rest) = RepeatUntil::<AlphaNumString, DigitStr<'_>>::parse(input).unwrap();
+        let (result, rest) = RepeatUntil::<AlphaString, DigitStr<'_>>::parse(input).unwrap();
         assert_eq!(result.into_items(), vec!["abc"]);
         assert_eq!(rest, "123def456ghi");
     }

@@ -1,5 +1,4 @@
 use crate::error::ParseResult;
-use crate::literals::{LBrace, LBracket, LParen, RBrace, RBracket, RParen};
 use crate::parse::Parse;
 
 // ============================================================================
@@ -16,6 +15,7 @@ use crate::parse::Parse;
 /// * `S` - The start delimiter token type
 /// * `E` - The end delimiter token type
 /// * `I` - The inner content parser type
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Delimited<S, E, I> {
     /// The parsed start delimiter token.
     pub start: S,
@@ -24,10 +24,6 @@ pub struct Delimited<S, E, I> {
     /// The parsed inner content.
     pub inner: I,
 }
-
-pub type Parenthesized<I> = Delimited<LParen, RParen, I>;
-pub type Bracketed<I> = Delimited<LBracket, RBracket, I>;
-pub type Braced<I> = Delimited<LBrace, RBrace, I>;
 
 impl<S, E, I> Delimited<S, E, I> {
     /// Map the inner content of the delimited parser
@@ -73,13 +69,14 @@ where
 #[cfg(test)]
 mod tests {
     use crate::primitives::prelude::AlphaString;
+    use crate::literals::*;
 
     use super::*;
 
     #[test]
     fn test_delimited_parentheses() {
         let input = "(42)";
-        let (result, rest) = Parenthesized::<i64>::parse(input).unwrap();
+        let (result, rest) = Delimited::<LParen, RParen, i64>::parse(input).unwrap();
         assert_eq!(result.inner, 42);
         assert_eq!(rest, "");
     }
@@ -87,7 +84,7 @@ mod tests {
     #[test]
     fn test_delimited_with_trailing() {
         let input = "(42) rest";
-        let (result, rest) = Parenthesized::<i64>::parse(input).unwrap();
+        let (result, rest) = Delimited::<LParen, RParen, i64>::parse(input).unwrap();
         assert_eq!(result.inner, 42);
         assert_eq!(rest, " rest");
     }
@@ -95,7 +92,7 @@ mod tests {
     #[test]
     fn test_delimited_brackets() {
         let input = "[hello]";
-        let (result, rest) = Bracketed::<AlphaString>::parse(input).unwrap();
+        let (result, rest) = Delimited::<LBracket, RBracket, AlphaString>::parse(input).unwrap();
         assert_eq!(result.inner, "hello");
         assert_eq!(rest, "");
     }

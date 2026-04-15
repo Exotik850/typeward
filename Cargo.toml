@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 array-util = { version = "1.0", optional = true }
 pastey = "0.2.1"
+stable-pattern = "0.1.0"
 
 [features]
 default = ["arrays"]

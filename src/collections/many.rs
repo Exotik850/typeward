@@ -4,22 +4,22 @@ pub struct Many0<T> {
 }
 
 impl<T> Many0<T> {
-    #[must_use] 
+    #[must_use]
     pub fn items(&self) -> &[T] {
         &self.items
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn into_items(self) -> Vec<T> {
         self.items
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn len(&self) -> usize {
         self.items.len()
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.items.is_empty()
     }
@@ -50,27 +50,27 @@ pub struct Many1<T> {
 }
 
 impl<T> Many1<T> {
-    #[must_use] 
+    #[must_use]
     pub fn items(&self) -> &[T] {
         &self.items
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn into_items(self) -> Vec<T> {
         self.items
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn len(&self) -> usize {
         self.items.len()
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.items.is_empty()
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn first(&self) -> &T {
         // Safe: `Many1` guarantees at least one item
         &self.items[0]

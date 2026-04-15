@@ -1,4 +1,5 @@
-use crate::{error::ParseError, error::ParseResult};
+use crate::error::{ParseError, ParseResult, custom};
+use stable_pattern::{Pattern, Searcher};
 
 /// Borrowed token-stream input wrapper.
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -54,6 +55,14 @@ pub trait Input<'a>: Copy + Sized {
     /// Attempts to strip a literal prefix and returns remaining input on success.
     fn strip_prefix(self, prefix: &str) -> ParseResult<Option<Self>>;
 
+    /// Finds the next occurrence of `needle` and returns input starting at that match.
+    fn find(self, needle: &str) -> ParseResult<Option<Self>>;
+
+    /// Returns the input segment from `self` up to (but excluding) `end`.
+    ///
+    /// Both values must be suffixes of the same original input.
+    fn slice_to(self, end: Self) -> ParseResult<Self>;
+
     /// Takes the first character and returns it with the remaining input.
     fn take_char(self) -> ParseResult<Option<(char, Self)>>;
 
@@ -61,9 +70,17 @@ pub trait Input<'a>: Copy + Sized {
     ///
     /// Returns the matched prefix and remaining input. The matched prefix may be
     /// empty when no leading characters satisfy the predicate.
-    fn take_while<F>(self, predicate: F) -> ParseResult<(&'a str, Self)>
+    fn take_while<P>(self, predicate: P) -> ParseResult<(&'a str, Self)>
     where
-        F: FnMut(char) -> bool;
+        P: Pattern<'a> + Copy;
+
+    /// Consumes a prefix until `predicate` matches.
+    /// 
+    /// Returns the consumed prefix and remaining input. The consumed prefix may be
+    /// empty when the predicate matches at the start of the input.
+    fn take_till<P>(self, predicate: P) -> ParseResult<(&'a str, Self)>
+    where
+        P: Pattern<'a> + Copy;
 
     /// Returns an empty input value of the same type.
     fn empty() -> Self;
@@ -95,6 +112,21 @@ impl<'a> Input<'a> for &'a str {
         Ok(self.strip_prefix(prefix))
     }
 
+    fn find(self, needle: &str) -> ParseResult<Option<Self>> {
+        Ok(self.find(needle).map(|idx| &self[idx..]))
+    }
+
+    fn slice_to(self, end: Self) -> ParseResult<Self> {
+        if end.len() > self.len() {
+            return Err(ParseError::custom(
+                "invalid input bounds while slicing string input",
+            ));
+        }
+
+        let consumed = self.len() - end.len();
+        Ok(&self[..consumed])
+    }
+
     fn take_char(self) -> ParseResult<Option<(char, Self)>> {
         let mut chars = self.chars();
         match chars.next() {
@@ -103,12 +135,30 @@ impl<'a> Input<'a> for &'a str {
         }
     }
 
-    fn take_while<F>(self, mut predicate: F) -> ParseResult<(&'a str, Self)>
+    fn take_while<P>(self, predicate: P) -> ParseResult<(&'a str, Self)>
     where
-        F: FnMut(char) -> bool,
+        P: Pattern<'a> + Copy,
     {
-        let idx = self.find(|c| !predicate(c)).unwrap_or(self.len());
+        let mut idx = 0;
+        while let Some(rest) = predicate.strip_prefix_of(&self[idx..]) {
+            idx += self[idx..].len() - rest.len();
+        }
         Ok((&self[..idx], &self[idx..]))
+    }
+
+    fn take_till<P>(self, predicate: P) -> ParseResult<(&'a str, Self)>
+    where
+        P: Pattern<'a> + Copy,
+    {
+        let out = predicate
+            .into_searcher(self)
+            .next_match()
+            .map(|(start, _)| {
+                let (matched, rest) = self.split_at(start);
+                (matched, rest)
+            })
+            .unwrap_or((self, ""));
+        Ok(out)
     }
 
     fn empty() -> Self {
@@ -147,6 +197,22 @@ impl<'a> Input<'a> for &'a [u8] {
         }
     }
 
+    fn find(self, needle: &str) -> ParseResult<Option<Self>> {
+        let s = utf8(self)?;
+        Ok(s.find(needle).map(|idx| &self[idx..]))
+    }
+
+    fn slice_to(self, end: Self) -> ParseResult<Self> {
+        if end.len() > self.len() {
+            return Err(ParseError::custom(
+                "invalid input bounds while slicing byte input",
+            ));
+        }
+
+        let consumed = self.len() - end.len();
+        Ok(&self[..consumed])
+    }
+
     fn take_char(self) -> ParseResult<Option<(char, Self)>> {
         let s = utf8(self)?;
         let mut chars = s.chars();
@@ -158,14 +224,32 @@ impl<'a> Input<'a> for &'a [u8] {
         }
     }
 
-    fn take_while<F>(self, mut predicate: F) -> ParseResult<(&'a str, Self)>
+    fn take_while<P>(self, predicate: P) -> ParseResult<(&'a str, Self)>
     where
-        F: FnMut(char) -> bool,
+        P: Pattern<'a> + Copy,
     {
         let s = utf8(self)?;
-        let idx = s.find(|c| !predicate(c)).unwrap_or(s.len());
-        let consumed = s[..idx].len();
-        Ok((&s[..idx], &self[consumed..]))
+        let mut idx = 0;
+        while let Some(rest) = predicate.strip_prefix_of(&s[idx..]) {
+            idx += s[idx..].len() - rest.len();
+        }
+        Ok((&s[..idx], &self[idx..]))
+    }
+
+    fn take_till<P>(self, predicate: P) -> ParseResult<(&'a str, Self)>
+    where
+        P: Pattern<'a> + Copy,
+    {
+        let s = utf8(self)?;
+        let out = predicate
+            .into_searcher(s)
+            .next_match()
+            .map(|(start, _)| {
+                let (matched, rest) = s.split_at(start);
+                (matched, rest.as_bytes())
+            })
+            .unwrap_or((s, &[]));
+        Ok(out)
     }
 
     fn empty() -> Self {
@@ -204,10 +288,32 @@ where
 
     fn strip_prefix(self, prefix: &str) -> ParseResult<Option<Self>> {
         if let Some(first) = self.tokens.first()
-            && first.as_ref() == prefix {
-                return Ok(Some(Self::new(&self.tokens[1..])));
-            }
+            && first.as_ref() == prefix
+        {
+            return Ok(Some(Self::new(&self.tokens[1..])));
+        }
         Ok(None)
+    }
+
+    fn find(self, needle: &str) -> ParseResult<Option<Self>> {
+        Ok(self
+            .tokens
+            .iter()
+            .position(|token| token.as_ref() == needle)
+            .map(|idx| Self::new(&self.tokens[idx..])))
+    }
+
+    fn slice_to(self, end: Self) -> ParseResult<Self> {
+        let start_slice = self.as_slice();
+        let end_slice = end.as_slice();
+        if end_slice.len() > start_slice.len() {
+            return Err(ParseError::custom(
+                "invalid input bounds while slicing token input",
+            ));
+        }
+
+        let consumed = start_slice.len() - end_slice.len();
+        Ok(Self::new(&start_slice[..consumed]))
     }
 
     fn take_char(self) -> ParseResult<Option<(char, Self)>> {
@@ -231,18 +337,18 @@ where
         Ok(Some((ch, Self::new(&self.tokens[1..]))))
     }
 
-    fn take_while<F>(self, mut predicate: F) -> ParseResult<(&'a str, Self)>
+    fn take_while<P>(self, predicate: P) -> ParseResult<(&'a str, Self)>
     where
-        F: FnMut(char) -> bool,
+        P: Pattern<'a> + Copy,
     {
         let Some(first) = self.tokens.first() else {
             return Ok(("", self));
         };
 
         let token = first.as_ref();
-        let idx = token.find(|c| !predicate(c)).unwrap_or(token.len());
-        if idx == 0 {
-            return Ok(("", self));
+        let mut idx = 0;
+        while let Some(rest) = predicate.strip_prefix_of(&token[idx..]) {
+            idx += token[idx..].len() - rest.len();
         }
         if idx != token.len() {
             return Err(ParseError::custom(
@@ -251,6 +357,31 @@ where
         }
 
         Ok((token, Self::new(&self.tokens[1..])))
+    }
+
+    fn take_till<P>(self, predicate: P) -> ParseResult<(&'a str, Self)>
+    where
+        P: Pattern<'a> + Copy,
+    {
+        let Some(first) = self.tokens.first() else {
+            return Ok(("", self));
+        };
+
+        let token = first.as_ref();
+        let out = predicate
+            .into_searcher(token)
+            .next_match()
+            .map(|(start, _)| {
+                let (matched, rest) = token.split_at(start);
+                if !rest.is_empty() {
+                    return Err(ParseError::custom(
+                        "cannot consume partial token from token stream input",
+                    ));
+                }
+                Ok(matched)
+            })
+            .unwrap_or(Ok(token))?;
+        Ok((out, Self::new(&self.tokens[1..])))
     }
 
     fn empty() -> Self {
@@ -268,6 +399,24 @@ mod tests {
         let (alpha, rest) = input.take_while(char::is_alphabetic).unwrap();
         assert_eq!(alpha, "abc");
         assert_eq!(rest, b"123");
+    }
+
+    #[test]
+    fn str_take_while() {
+        let input = "abc123";
+        let (alpha, rest) = input.take_while(char::is_alphabetic).unwrap();
+        assert_eq!(alpha, "abc");
+        assert_eq!(rest, "123");
+    }
+
+    #[test]
+    fn take_while_stream() {
+        let input = ["abc", "def", "123"];
+        let (alpha, rest) = TokenStream::new(&input)
+            .take_while(char::is_alphabetic)
+            .unwrap();
+        assert_eq!(alpha, "abc");
+        assert_eq!(rest.as_slice(), &["def", "123"]);
     }
 
     #[test]

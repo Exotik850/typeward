@@ -41,7 +41,6 @@ where
 {
     fn parse(input: I) -> ParseResult<(Self, I)> {
         let (left, remaining) = A::parse(input)?;
-        let remaining = remaining.trim_start()?;
         let (right, remaining) = B::parse(remaining)?;
         Ok((And { left, right }, remaining))
     }
@@ -49,10 +48,10 @@ where
 
 #[macro_export]
 macro_rules! and {
-    ($a:expr, $b:expr) => {
+    ($a:ty, $b:ty) => {
         $crate::combinators::and::And<$a, $b>
     };
-    ($a:expr, $($rest:expr),+) => {
+    ($a:ty, $($rest:ty),+) => {
         $crate::combinators::and::And<$a, $crate::and!($($rest),+)>
     };
 }
