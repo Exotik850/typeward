@@ -56,7 +56,7 @@ where
 {
     let (result, remaining) = T::parse(input)?;
     let remaining = remaining.trim_start()?;
-    if remaining.is_empty()? {
+    if remaining.is_empty() {
         Ok(result)
     } else {
         Err(ParseError::custom(format!(

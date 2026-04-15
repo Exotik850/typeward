@@ -46,7 +46,7 @@ pub trait Input<'a>: Copy + Sized {
     fn trim_start(self) -> ParseResult<Self>;
 
     /// Returns true when no input remains.
-    fn is_empty(self) -> ParseResult<bool>;
+    fn is_empty(self) -> bool;
 
     /// Returns the remaining input as a debug-friendly string.
     fn display(self) -> String;
@@ -64,6 +64,9 @@ pub trait Input<'a>: Copy + Sized {
     fn take_while<F>(self, predicate: F) -> ParseResult<(&'a str, Self)>
     where
         F: FnMut(char) -> bool;
+
+    /// Returns an empty input value of the same type.
+    fn empty() -> Self;
 }
 
 fn utf8(bytes: &[u8]) -> ParseResult<&str> {
@@ -80,8 +83,8 @@ impl<'a> Input<'a> for &'a str {
         Ok(self.trim_start())
     }
 
-    fn is_empty(self) -> ParseResult<bool> {
-        Ok(self.is_empty())
+    fn is_empty(self) -> bool {
+        self.is_empty()
     }
 
     fn display(self) -> String {
@@ -107,6 +110,10 @@ impl<'a> Input<'a> for &'a str {
         let idx = self.find(|c| !predicate(c)).unwrap_or(self.len());
         Ok((&self[..idx], &self[idx..]))
     }
+
+    fn empty() -> Self {
+        ""
+    }
 }
 
 impl<'a> Input<'a> for &'a [u8] {
@@ -122,8 +129,8 @@ impl<'a> Input<'a> for &'a [u8] {
         Ok(&self[end..])
     }
 
-    fn is_empty(self) -> ParseResult<bool> {
-        Ok(self.is_empty())
+    fn is_empty(self) -> bool {
+        self.is_empty()
     }
 
     fn display(self) -> String {
@@ -160,6 +167,10 @@ impl<'a> Input<'a> for &'a [u8] {
         let consumed = s[..idx].len();
         Ok((&s[..idx], &self[consumed..]))
     }
+
+    fn empty() -> Self {
+        &[]
+    }
 }
 
 impl<'a, T> Input<'a> for TokenStream<'a, T>
@@ -178,8 +189,8 @@ where
         Ok(Self::new(&self.tokens[idx..]))
     }
 
-    fn is_empty(self) -> ParseResult<bool> {
-        Ok(self.tokens.is_empty())
+    fn is_empty(self) -> bool {
+        self.tokens.is_empty()
     }
 
     fn display(self) -> String {
@@ -240,6 +251,10 @@ where
         }
 
         Ok((token, Self::new(&self.tokens[1..])))
+    }
+
+    fn empty() -> Self {
+        Self::new(&[])
     }
 }
 

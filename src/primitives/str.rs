@@ -7,7 +7,7 @@ where
     I: Input<'a>,
 {
     fn parse(input: I) -> ParseResult<(Self, I)> {
-        if input.is_empty()? {
+        if input.is_empty() {
             return Err(crate::error::ParseError::custom(
                 "expected string, found end of input",
             ));
