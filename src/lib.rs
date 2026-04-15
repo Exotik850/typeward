@@ -13,6 +13,7 @@
 //! - [`primitives`] — `Parse` implementations for built-in types
 //! - [`combinators`] — Parser combinators like [`Delimited`]
 
+pub mod collections;
 pub mod combinators;
 pub mod error;
 pub mod literals;
@@ -29,6 +30,7 @@ pub mod token;
 /// Import this module with `use typeward::prelude::*;` to get access
 /// to the core traits, types, and functions.
 pub mod prelude {
+    pub use crate::collections::prelude::*;
     pub use crate::combinators::prelude::*;
     pub use crate::error::{ParseError, ParseResult};
     pub use crate::parse::{Parse, parse_complete};
