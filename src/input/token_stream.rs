@@ -59,13 +59,13 @@ where
         self.tokens.len()
     }
 
-    fn trim_start(self) -> ParseResult<Self> {
+    fn trim_start(self) -> Self {
         let start = self
             .tokens
             .iter()
             .position(|token| !token.as_ref().trim_start().is_empty())
             .unwrap_or(self.tokens.len());
-        Ok(Self::new(&self.tokens[start..]))
+        Self::new(&self.tokens[start..])
     }
 
     fn is_empty(self) -> bool {

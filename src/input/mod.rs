@@ -21,7 +21,7 @@ pub trait Input<'a>: Copy + Sized {
     fn input_len(self) -> usize;
 
     /// Trims leading whitespace and returns the remaining input.
-    fn trim_start(self) -> ParseResult<Self>;
+    fn trim_start(self) -> Self;
 
     /// Returns true when no input remains.
     fn is_empty(self) -> bool;

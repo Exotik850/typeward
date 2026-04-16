@@ -5,6 +5,7 @@ pub mod not;
 pub mod or;
 pub mod peek;
 pub mod separated;
+pub mod span;
 pub mod ws;
 
 pub mod prelude {
@@ -15,5 +16,6 @@ pub mod prelude {
     pub use super::or::{Either, Or};
     pub use super::peek::Peek;
     pub use super::separated::{CommaSeparated, CommaSeparated0, Separated, Separated0};
+    pub use super::span::{Span, SpanExt};
     pub use super::ws::Ws;
 }

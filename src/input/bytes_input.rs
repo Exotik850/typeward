@@ -9,12 +9,12 @@ impl<'a> Input<'a> for &'a [u8] {
         self.len()
     }
 
-    fn trim_start(self) -> ParseResult<Self> {
+    fn trim_start(self) -> Self {
         let start = self
             .iter()
             .position(|byte| !byte.is_ascii_whitespace())
             .unwrap_or(self.len());
-        Ok(&self[start..])
+        &self[start..]
     }
 
     fn is_empty(self) -> bool {
@@ -26,9 +26,7 @@ impl<'a> Input<'a> for &'a [u8] {
     }
 
     fn strip_prefix(self, prefix: &str) -> ParseResult<Option<Self>> {
-        let s = shared::utf8(self)?;
-        Ok(s.strip_prefix(prefix)
-            .map(|rest| &self[s.len() - rest.len()..]))
+        Ok(self.strip_prefix(prefix.as_bytes()))
     }
 
     fn find(self, needle: &str) -> ParseResult<Option<Self>> {

@@ -88,9 +88,9 @@ where
 {
     fn parse(input: In) -> ParseResult<(Self, In)> {
         let (start, remaining) = S::parse(input)?;
-        let remaining = remaining.trim_start()?;
+        let remaining = remaining.trim_start();
         let (inner, remaining) = I::parse(remaining)?;
-        let remaining = remaining.trim_start()?;
+        let remaining = remaining.trim_start();
         let (end, remaining) = E::parse(remaining)?;
 
         Ok((Delimited { start, end, inner }, remaining))
@@ -115,8 +115,8 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::primitives::prelude::AlphaString;
     use crate::literals::*;
+    use crate::primitives::prelude::AlphaString;
 
     use super::*;
 
@@ -170,7 +170,11 @@ mod tests {
     #[test]
     fn test_delimited_exact_preserves_inner_whitespace() {
         let input = "(  42)";
-        let (result, rest) = DelimitedExact::<LParen, RParen, crate::primitives::str::TakeTillToken<RParen>>::parse(input).unwrap();
+        let (result, rest) =
+            DelimitedExact::<LParen, RParen, crate::primitives::str::TakeTillToken<RParen>>::parse(
+                input,
+            )
+            .unwrap();
         assert_eq!(result.inner, "  42");
         assert_eq!(rest, "");
     }

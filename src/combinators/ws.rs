@@ -36,7 +36,7 @@ where
     T: Parse<'a, I>,
 {
     fn parse(input: I) -> ParseResult<(Self, I)> {
-        let (value, rest) = T::parse(input.trim_start()?)?;
+        let (value, rest) = T::parse(input.trim_start())?;
         Ok((Self(value), rest))
     }
 }

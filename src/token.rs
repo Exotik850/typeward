@@ -1,4 +1,8 @@
-use crate::{error::ParseError, input::Input, parse::Parse};
+use crate::{
+    error::{ParseError, SourceSpan},
+    input::Input,
+    parse::{Parse, ParseOffsetInput, current_parse_offset},
+};
 
 /// A trait for types that represent a specific token string value.
 ///
@@ -34,7 +38,7 @@ macro_rules! define_tokens {
 // Blanket implementation for types that implement Token + Default
 impl<'a, I, T> Parse<'a, I> for T
 where
-    I: Input<'a>,
+    I: ParseOffsetInput<'a>,
     T: Token,
 {
     fn parse(input: I) -> Result<(Self, I), ParseError> {
@@ -44,7 +48,8 @@ where
             Err(ParseError::UnexpectedToken {
                 expected: Self::VALUE,
                 found: input.display().into_owned(),
-            })
+            }
+            .with_span(SourceSpan::point(current_parse_offset(input))))
         }
     }
 }
@@ -53,12 +58,15 @@ where
 // since char does not implement Token)
 impl<'a, I> Parse<'a, I> for char
 where
-    I: Input<'a>,
+    I: ParseOffsetInput<'a>,
 {
     fn parse(input: I) -> Result<(Self, I), ParseError> {
         match input.take_char()? {
             Some((c, rest)) => Ok((c, rest)),
-            None => Err(ParseError::UnexpectedEOF),
+            None => {
+                Err(ParseError::UnexpectedEOF
+                    .with_span(SourceSpan::point(current_parse_offset(input))))
+            }
         }
     }
 }
@@ -111,7 +119,9 @@ mod tests {
     fn test_char_parse_token_empty() {
         let input = "";
         let result = char::parse(input);
-        assert_eq!(result, Err(ParseError::UnexpectedEOF));
+        let err = result.unwrap_err();
+        assert_eq!(err.root_cause(), &ParseError::UnexpectedEOF);
+        assert_eq!(err.span(), Some(SourceSpan::point(0)));
     }
 
     #[test]

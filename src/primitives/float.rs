@@ -6,10 +6,10 @@ where
 {
     let mut rest = input;
 
-    if let Some((ch, next)) = rest.take_char()? {
-        if matches!(ch, '+' | '-') {
-            rest = next;
-        }
+    if let Some((ch, next)) = rest.take_char()?
+        && matches!(ch, '+' | '-')
+    {
+        rest = next;
     }
 
     let mut seen_mantissa_digit = false;
@@ -63,7 +63,7 @@ macro_rules! parse_float {
                 I: Input<'a>,
             {
                 fn parse(input: I) -> ParseResult<(Self, I)> {
-                    let input = input.trim_start()?;
+                    let input = input.trim_start();
                     let Some(rest) = scan_float_end(input)? else {
                         return Err(crate::error::ParseError::custom(format!(
                             "expected {}",

@@ -9,8 +9,8 @@ impl<'a> Input<'a> for &'a str {
         self.len()
     }
 
-    fn trim_start(self) -> ParseResult<Self> {
-        Ok(self.trim_start())
+    fn trim_start(self) -> Self {
+        self.trim_start()
     }
 
     fn is_empty(self) -> bool {

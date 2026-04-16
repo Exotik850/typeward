@@ -42,7 +42,7 @@ macro_rules! parse_signed {
                 I: Input<'a>,
             {
                 fn parse(input: I) -> ParseResult<(Self, I)> {
-                    let input = input.trim_start()?;
+                    let input = input.trim_start();
                     let (sign, rest) = if let Some(rest) = input.strip_prefix("-")? {
                         (-1, rest)
                     } else if let Some(rest) = input.strip_prefix("+")? {
