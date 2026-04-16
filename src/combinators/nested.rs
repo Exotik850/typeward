@@ -1,8 +1,7 @@
 use crate::{
     error::{ParseError, ParseResult},
-    literals::*,
-    input::Input,
-    parse::{Parse, parse_complete_input},
+    literals::{LBrace, LBracket, LParen, RBrace, RBracket, RParen},
+    parse::{Parse, ParseOffsetInput, parse_complete_input},
     token::Token,
 };
 
@@ -44,7 +43,7 @@ pub type Braced<I> = Nested<LBrace, RBrace, I>;
 
 impl<'a, I, Left, Right, Inner> Parse<'a, I> for Nested<Left, Right, Inner>
 where
-    I: Input<'a>,
+    I: ParseOffsetInput<'a>,
     Left: Token,
     Right: Token,
     Inner: Parse<'a, I>,

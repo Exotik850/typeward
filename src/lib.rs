@@ -35,10 +35,13 @@ pub mod token;
 pub mod prelude {
     pub use crate::collections::prelude::*;
     pub use crate::combinators::prelude::*;
-    pub use crate::error::{ParseError, ParseResult};
+    pub use crate::error::{ParseError, ParseResult, SourceSpan};
     pub use crate::input::{Input, TokenStream};
     pub use crate::literals::*;
-    pub use crate::parse::{Parse, parse_complete, parse_complete_input};
+    pub use crate::parse::{
+        Parse, ParseOffsetInput, parse_complete, parse_complete_input,
+        parse_complete_input_spanned, parse_complete_spanned,
+    };
     pub use crate::primitives::prelude::*;
     pub use crate::token::Token;
     pub use crate::{and, new_and, or, or_match, unpack_and};
