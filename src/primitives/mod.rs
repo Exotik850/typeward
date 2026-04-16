@@ -9,6 +9,7 @@ pub mod str;
 pub mod prelude {
     pub use super::basic::*;
     pub use super::filtered::*;
+    pub use super::str::{TakeTillToken, TakeTillTokenCow, TakeTillTokenStr};
 }
 
 impl<'a, I> Parse<'a, I> for bool
