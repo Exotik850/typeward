@@ -1,7 +1,7 @@
 use crate::{
     error::{ParseError, SourceSpan},
     input::Input,
-    parse::{Parse, ParseOffsetInput, current_parse_offset},
+    parse::{Parse, ParseOffsetContext, ParseOffsetInput, current_parse_offset},
 };
 
 /// A trait for types that represent a specific token string value.
@@ -15,7 +15,10 @@ pub trait Token: Default {
 
 #[macro_export]
 macro_rules! lit_token {
-    ($(#[$attr:meta])* $name:ident, $value:literal) => {
+    (
+      $(#[$attr:meta])*
+      $name:ident, $value:literal
+    ) => {
         #[derive(Default, Copy, Clone, Debug, PartialEq, Eq, Hash)]
         $(#[$attr])*
         pub struct $name;
@@ -28,7 +31,11 @@ macro_rules! lit_token {
 /// Defines many tokens at once using a concise syntax.
 #[macro_export]
 macro_rules! define_tokens {
-    ($(#[$attr:meta])* $name:ident, $value:literal; $($rest:tt)*) => {
+    (
+      $(#[$attr:meta])*
+      $name:ident, $value:literal;
+      $($rest:tt)*
+    ) => {
         $crate::lit_token!($(#[$attr])* $name, $value);
         $crate::define_tokens!($($rest)*);
     };
@@ -39,9 +46,12 @@ macro_rules! define_tokens {
 impl<'a, I, T> Parse<'a, I> for T
 where
     I: ParseOffsetInput<'a>,
-    T: Token,
+    T: Token + Copy,
 {
-    fn parse(input: I) -> Result<(Self, I), ParseError> {
+    fn parse_with_context(
+        input: I,
+        context: &mut ParseOffsetContext,
+    ) -> Result<(Self, I), ParseError> {
         if let Some(remaining) = input.strip_prefix(Self::VALUE)? {
             Ok((Self::default(), remaining))
         } else {
@@ -49,7 +59,7 @@ where
                 expected: Self::VALUE,
                 found: input.display().into_owned(),
             }
-            .with_span(SourceSpan::point(current_parse_offset(input))))
+            .with_span(SourceSpan::point(current_parse_offset(context, input))))
         }
     }
 }
@@ -60,13 +70,14 @@ impl<'a, I> Parse<'a, I> for char
 where
     I: ParseOffsetInput<'a>,
 {
-    fn parse(input: I) -> Result<(Self, I), ParseError> {
+    fn parse_with_context(
+        input: I,
+        context: &mut ParseOffsetContext,
+    ) -> Result<(Self, I), ParseError> {
         match input.take_char()? {
             Some((c, rest)) => Ok((c, rest)),
-            None => {
-                Err(ParseError::UnexpectedEOF
-                    .with_span(SourceSpan::point(current_parse_offset(input))))
-            }
+            None => Err(ParseError::UnexpectedEOF
+                .with_span(SourceSpan::point(current_parse_offset(context, input)))),
         }
     }
 }
@@ -77,9 +88,12 @@ where
     I: Input<'a>,
     T: Parse<'a, I>,
 {
-    fn parse(mut input: I) -> crate::error::ParseResult<(Self, I)> {
+    fn parse_with_context(
+        mut input: I,
+        context: &mut ParseOffsetContext,
+    ) -> crate::error::ParseResult<(Self, I)> {
         let arr = array_util::try_from_fn(|_| {
-            let (value, rest) = T::parse(input)?;
+            let (value, rest) = T::parse_with_context(input, context)?;
             input = rest;
             Ok::<T, ParseError>(value)
         })?;

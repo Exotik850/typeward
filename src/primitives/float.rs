@@ -62,7 +62,10 @@ macro_rules! parse_float {
             where
                 I: Input<'a>,
             {
-                fn parse(input: I) -> ParseResult<(Self, I)> {
+                fn parse_with_context(
+                    input: I,
+                    _context: &mut crate::parse::ParseOffsetContext,
+                ) -> ParseResult<(Self, I)> {
                     let input = input.trim_start();
                     let Some(rest) = scan_float_end(input)? else {
                         return Err(crate::error::ParseError::custom(format!(

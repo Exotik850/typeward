@@ -16,7 +16,10 @@ impl<'a, I> Parse<'a, I> for bool
 where
     I: Input<'a>,
 {
-    fn parse(input: I) -> ParseResult<(Self, I)> {
+    fn parse_with_context(
+        input: I,
+        _context: &mut crate::parse::ParseOffsetContext,
+    ) -> ParseResult<(Self, I)> {
         if let Some(rest) = input.strip_prefix("true")? {
             Ok((true, rest))
         } else if let Some(rest) = input.strip_prefix("false")? {

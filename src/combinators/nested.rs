@@ -44,11 +44,14 @@ pub type Braced<I> = Nested<LBrace, RBrace, I>;
 impl<'a, I, Left, Right, Inner> Parse<'a, I> for Nested<Left, Right, Inner>
 where
     I: ParseOffsetInput<'a>,
-    Left: Token,
-    Right: Token,
+    Left: Token + Parse<'a, I>,
+    Right: Token + Parse<'a, I>,
     Inner: Parse<'a, I>,
 {
-    fn parse(input: I) -> ParseResult<(Self, I)> {
+    fn parse_with_context(
+        input: I,
+        context: &mut crate::parse::ParseOffsetContext,
+    ) -> ParseResult<(Self, I)> {
         if Left::VALUE.is_empty() || Right::VALUE.is_empty() {
             return Err(ParseError::custom(
                 "nested delimiters must be non-empty tokens",
@@ -59,7 +62,7 @@ where
                 "nested delimiters must not be identical tokens",
             ));
         }
-        let (left, mut cursor) = Left::parse(input)?;
+        let (left, mut cursor) = Left::parse_with_context(input, context)?;
         let inner_start = cursor;
         let mut depth = 1usize;
         let close_start = loop {
@@ -73,7 +76,7 @@ where
                 if left_dist < right_dist
                     || (left_dist == right_dist && Left::VALUE.len() > Right::VALUE.len())
                 {
-                    let (_, rest) = Left::parse(left_at)?;
+                    let (_, rest) = Left::parse_with_context(left_at, context)?;
                     depth += 1;
                     cursor = rest;
                     continue;
@@ -83,14 +86,14 @@ where
                     break right_at;
                 }
 
-                let (_, rest) = Right::parse(right_at)?;
+                let (_, rest) = Right::parse_with_context(right_at, context)?;
                 depth -= 1;
                 cursor = rest;
                 continue;
             }
 
             if let Some(left_at) = next_left {
-                let (_, rest) = Left::parse(left_at)?;
+                let (_, rest) = Left::parse_with_context(left_at, context)?;
                 depth += 1;
                 cursor = rest;
                 continue;
@@ -101,7 +104,7 @@ where
                     break right_at;
                 }
 
-                let (_, rest) = Right::parse(right_at)?;
+                let (_, rest) = Right::parse_with_context(right_at, context)?;
                 depth -= 1;
                 cursor = rest;
                 continue;
@@ -111,9 +114,10 @@ where
         };
 
         let inner_input = inner_start.slice_to(close_start)?;
-        let inner = parse_complete_input::<I, Inner>(inner_input)?;
+        // let inner = parse_complete_input::<I, Inner>(inner_input)?;
+        let (inner, _) = Inner::parse_with_context(inner_input, context)?;
 
-        let (right, remaining) = Right::parse(close_start)?;
+        let (right, remaining) = Right::parse_with_context(close_start, context)?;
         Ok((Nested { left, inner, right }, remaining))
     }
 }

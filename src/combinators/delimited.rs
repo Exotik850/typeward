@@ -86,12 +86,15 @@ where
     E: Parse<'a, In>,
     I: Parse<'a, In>,
 {
-    fn parse(input: In) -> ParseResult<(Self, In)> {
-        let (start, remaining) = S::parse(input)?;
+    fn parse_with_context(
+        input: In,
+        context: &mut crate::parse::ParseOffsetContext,
+    ) -> ParseResult<(Self, In)> {
+        let (start, remaining) = S::parse_with_context(input, context)?;
         let remaining = remaining.trim_start();
-        let (inner, remaining) = I::parse(remaining)?;
+        let (inner, remaining) = I::parse_with_context(remaining, context)?;
         let remaining = remaining.trim_start();
-        let (end, remaining) = E::parse(remaining)?;
+        let (end, remaining) = E::parse_with_context(remaining, context)?;
 
         Ok((Delimited { start, end, inner }, remaining))
     }
@@ -104,10 +107,13 @@ where
     E: Parse<'a, In>,
     I: Parse<'a, In>,
 {
-    fn parse(input: In) -> ParseResult<(Self, In)> {
-        let (start, remaining) = S::parse(input)?;
-        let (inner, remaining) = I::parse(remaining)?;
-        let (end, remaining) = E::parse(remaining)?;
+    fn parse_with_context(
+        input: In,
+        context: &mut crate::parse::ParseOffsetContext,
+    ) -> ParseResult<(Self, In)> {
+        let (start, remaining) = S::parse_with_context(input, context)?;
+        let (inner, remaining) = I::parse_with_context(remaining, context)?;
+        let (end, remaining) = E::parse_with_context(remaining, context)?;
 
         Ok((DelimitedExact { start, end, inner }, remaining))
     }

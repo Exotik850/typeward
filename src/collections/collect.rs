@@ -22,10 +22,13 @@ where
     T: Parse<'a, I>,
     C: FromIterator<T>,
 {
-    fn parse(input: I) -> ParseResult<(Self, I)> {
+    fn parse_with_context(
+        input: I,
+        context: &mut crate::parse::ParseOffsetContext,
+    ) -> ParseResult<(Self, I)> {
         let mut rest = input;
 
-        let iter = std::iter::from_fn(|| match T::parse(rest) {
+        let iter = std::iter::from_fn(|| match T::parse_with_context(rest, context) {
             Ok((item, new_rest)) => {
                 if let Err(err) = crate::collections::ensure_progress(rest, new_rest, "Collect") {
                     return Some(Err(err));

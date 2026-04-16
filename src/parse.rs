@@ -1,10 +1,7 @@
 use crate::error::{ParseError, ParseResult};
 use crate::input::{Input, TokenStream};
-use std::{
-    cmp::Reverse,
-    mem,
-    sync::{OnceLock, RwLock},
-};
+use crate::prelude::Span;
+use std::{cmp::Reverse, mem};
 
 /// Domain for offset tracking units.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -41,7 +38,7 @@ impl ParseOffsetAnchor {
     }
 }
 
-/// Input support required for global offset tracking without thread-local state.
+/// Input support required for offset tracking through parse context.
 ///
 /// This trait lives outside of [`Input`] so parser position tracking remains an
 /// opt-in concern managed by parse orchestration.
@@ -53,94 +50,67 @@ pub trait ParseOffsetInput<'a>: Input<'a> {
     fn parse_offset_from(self, root: ParseOffsetAnchor) -> Option<usize>;
 }
 
-fn parse_offset_registry() -> &'static RwLock<Vec<ParseOffsetAnchor>> {
-    static REGISTRY: OnceLock<RwLock<Vec<ParseOffsetAnchor>>> = OnceLock::new();
-    REGISTRY.get_or_init(|| RwLock::new(Vec::new()))
+/// Parse-scoped offset context passed through parse calls.
+///
+/// This context is explicitly owned by the parse entry point and passed to
+/// nested parsers, avoiding any global state while remaining thread-safe.
+#[derive(Debug, Default, Clone)]
+pub struct ParseOffsetContext {
+    roots: Vec<ParseOffsetAnchor>,
 }
 
-struct ParseOffsetScope {
-    anchor: ParseOffsetAnchor,
-    pushed: bool,
-}
-
-impl ParseOffsetScope {
-    fn enter(anchor: ParseOffsetAnchor) -> Self {
-        let mut roots = parse_offset_registry()
-            .write()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        roots.push(anchor);
-        Self {
-            anchor,
-            pushed: true,
-        }
+impl ParseOffsetContext {
+    #[must_use]
+    pub fn new() -> Self {
+        Self { roots: Vec::new() }
     }
 
-    fn enter_if_missing<'a, I>(input: I) -> Self
+    fn has_scope_for<'a, I>(&self, input: I) -> bool
     where
         I: ParseOffsetInput<'a>,
     {
-        let anchor = input.parse_offset_anchor();
-        let has_scope = {
-            let roots = parse_offset_registry()
-                .read()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            roots
-                .iter()
-                .copied()
-                .any(|root| input.parse_offset_from(root).is_some())
-        };
-
-        if has_scope {
-            Self {
-                anchor,
-                pushed: false,
-            }
-        } else {
-            Self::enter(anchor)
-        }
+        self.roots
+            .iter()
+            .copied()
+            .any(|root| input.parse_offset_from(root).is_some())
     }
 }
 
-impl Drop for ParseOffsetScope {
-    fn drop(&mut self) {
-        if !self.pushed {
-            return;
-        }
+pub(crate) fn with_parse_offset_scope<'a, I, R>(
+    context: &mut ParseOffsetContext,
+    input: I,
+    parse: impl FnOnce(&mut ParseOffsetContext) -> R,
+) -> R
+where
+    I: ParseOffsetInput<'a>,
+{
+    context.roots.push(input.parse_offset_anchor());
+    let result = parse(context);
+    context.roots.pop();
+    result
+}
 
-        let mut roots = parse_offset_registry()
-            .write()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        if let Some(index) = roots.iter().rposition(|root| *root == self.anchor) {
-            roots.remove(index);
-        }
+pub(crate) fn with_parse_offset_scope_if_missing<'a, I, R>(
+    context: &mut ParseOffsetContext,
+    input: I,
+    parse: impl FnOnce(&mut ParseOffsetContext) -> R,
+) -> R
+where
+    I: ParseOffsetInput<'a>,
+{
+    if context.has_scope_for(input) {
+        parse(context)
+    } else {
+        with_parse_offset_scope(context, input, parse)
     }
 }
 
-pub(crate) fn with_parse_offset_scope<'a, I, R>(input: I, parse: impl FnOnce() -> R) -> R
+pub(crate) fn current_parse_offset<'a, I>(context: &ParseOffsetContext, input: I) -> usize
 where
     I: ParseOffsetInput<'a>,
 {
-    let _scope = ParseOffsetScope::enter(input.parse_offset_anchor());
-    parse()
-}
-
-pub(crate) fn with_parse_offset_scope_if_missing<'a, I, R>(input: I, parse: impl FnOnce() -> R) -> R
-where
-    I: ParseOffsetInput<'a>,
-{
-    let _scope = ParseOffsetScope::enter_if_missing(input);
-    parse()
-}
-
-pub(crate) fn current_parse_offset<'a, I>(input: I) -> usize
-where
-    I: ParseOffsetInput<'a>,
-{
-    let roots = parse_offset_registry()
-        .read()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-
-    roots
+    context
+        .roots
         .iter()
         .copied()
         .filter_map(|root| input.parse_offset_from(root).map(|offset| (offset, root)))
@@ -257,14 +227,20 @@ pub trait Parse<'a, I: Input<'a> = &'a str>: Sized {
     /// Parse a value from the input.
     ///
     /// Returns the parsed value and the remaining unconsumed input.
-    fn parse(input: I) -> ParseResult<(Self, I)>;
+    fn parse(input: I) -> ParseResult<(Self, I)> {
+        let mut context = ParseOffsetContext::new();
+        Self::parse_with_context(input, &mut context)
+    }
+
+    /// Parse a value from the input using an explicit offset context.
+    fn parse_with_context(input: I, context: &mut ParseOffsetContext) -> ParseResult<(Self, I)>;
 }
 
 impl<'a, I> Parse<'a, I> for ()
 where
     I: Input<'a>,
 {
-    fn parse(input: I) -> ParseResult<(Self, I)> {
+    fn parse_with_context(input: I, _context: &mut ParseOffsetContext) -> ParseResult<(Self, I)> {
         Ok(((), input))
     }
 }
@@ -274,13 +250,52 @@ where
     I: Input<'a>,
     T: Parse<'a, I>,
 {
-    fn parse(input: I) -> ParseResult<(Self, I)> {
-        match T::parse(input) {
+    fn parse_with_context(input: I, context: &mut ParseOffsetContext) -> ParseResult<(Self, I)> {
+        match T::parse_with_context(input, context) {
             Ok((value, remaining)) => Ok((Some(value), remaining)),
             Err(_) => Ok((None, input)),
         }
     }
 }
+
+impl<'a, I, T> Parse<'a, I> for Vec<T>
+where
+    I: Input<'a>,
+    T: Parse<'a, I>,
+{
+    fn parse_with_context(
+        mut input: I,
+        context: &mut ParseOffsetContext,
+    ) -> ParseResult<(Self, I)> {
+        let mut items = Vec::new();
+        while let Ok((item, remaining)) = T::parse_with_context(input, context) {
+            items.push(item);
+            input = remaining;
+        }
+        Ok((items, input))
+    }
+}
+
+macro_rules! parse_pointer {
+    ($ty:ty $(; $($bound:ident),*)?) => {
+        impl<'a, T, I> Parse<'a, I> for $ty
+        where
+            I: Input<'a>,
+            T: Parse<'a, I> $($(+ $bound)*)?,
+        {
+            fn parse_with_context(
+                input: I,
+                context: &mut ParseOffsetContext,
+            ) -> ParseResult<(Self, I)> {
+                let (value, remaining) = T::parse_with_context(input, context)?;
+                Ok((Self::from(value), remaining))
+            }
+        }
+    };
+}
+
+parse_pointer!(std::rc::Rc<T>; Clone);
+parse_pointer!(std::sync::Arc<T>; Clone);
 
 /// Convenience function to parse complete input, ensuring everything is consumed.
 ///
@@ -293,10 +308,8 @@ pub fn parse_complete<'a, T: Parse<'a>>(input: &'a str) -> ParseResult<T> {
 /// Convenience function to parse complete string input into a spanned result.
 ///
 /// This is equivalent to `parse_complete_input::<_, Span<T>>(input)`.
-pub fn parse_complete_spanned<'a, T: Parse<'a>>(
-    input: &'a str,
-) -> ParseResult<crate::combinators::span::Span<T>> {
-    parse_complete_input::<_, crate::combinators::span::Span<T>>(input)
+pub fn parse_complete_spanned<'a, T: Parse<'a>>(input: &'a str) -> ParseResult<Span<T>> {
+    parse_complete_input::<_, Span<T>>(input)
 }
 
 /// Convenience function to parse and fully consume an abstract input.
@@ -307,13 +320,14 @@ where
     I: ParseOffsetInput<'a>,
     T: Parse<'a, I>,
 {
-    with_parse_offset_scope(input, || {
-        let (result, remaining) = T::parse(input)?;
+    let mut context = ParseOffsetContext::new();
+    with_parse_offset_scope(&mut context, input, |context| {
+        let (result, remaining) = T::parse_with_context(input, context)?;
         let remaining = remaining.trim_start();
         if remaining.is_empty() {
             Ok(result)
         } else {
-            let start = current_parse_offset(remaining);
+            let start = current_parse_offset(context, remaining);
             let span = crate::error::SourceSpan::new(start, start + remaining.input_len());
             Err(ParseError::custom(format!(
                 "unexpected trailing input: '{}'",
@@ -325,14 +339,12 @@ where
 }
 
 /// Convenience function to parse and fully consume input into a spanned result.
-pub fn parse_complete_input_spanned<'a, I, T>(
-    input: I,
-) -> ParseResult<crate::combinators::span::Span<T>>
+pub fn parse_complete_input_spanned<'a, I, T>(input: I) -> ParseResult<Span<T>>
 where
     I: ParseOffsetInput<'a>,
     T: Parse<'a, I>,
 {
-    parse_complete_input::<_, crate::combinators::span::Span<T>>(input)
+    parse_complete_input::<_, Span<T>>(input)
 }
 
 #[cfg(test)]
@@ -341,23 +353,11 @@ mod tests {
     use crate::combinators::{span::Span, ws::Ws};
     use crate::error::SourceSpan;
     use crate::input::TokenStream;
+    use crate::lit_token;
     use crate::literals::KwNull;
 
-    // A simple test parser that consumes "hello"
-    struct HelloParser;
-    impl<'a, I> Parse<'a, I> for HelloParser
-    where
-        I: Input<'a>,
-    {
-        fn parse(input: I) -> ParseResult<(Self, I)> {
-            if let Some(remaining) = input.strip_prefix("hello")? {
-                Ok((HelloParser, remaining))
-            } else {
-                Err(ParseError::custom("expected 'hello'"))
-            }
-        }
-    }
-
+    lit_token!(HelloParser, "hello");
+    
     #[test]
     fn test_parse_complete_success() {
         let result = parse_complete::<HelloParser>("hello").unwrap();
@@ -406,6 +406,81 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_complete_input_spanned_bytes_uses_byte_offsets() {
+        let result = parse_complete_input_spanned::<_, char>("\u{00E9}".as_bytes()).unwrap();
+        assert_eq!(result.inner, '\u{00E9}');
+        assert_eq!(result.span, SourceSpan::new(0, 2));
+    }
+
+    #[test]
+    fn test_parse_complete_input_trailing_bytes_reports_byte_span() {
+        let err = parse_complete_input::<_, HelloParser>("hello\u{00E9}".as_bytes())
+            .err()
+            .expect("expected trailing byte input error");
+        assert_eq!(err.span(), Some(SourceSpan::new(5, 7)));
+    }
+
+    #[test]
+    fn test_parse_complete_input_trailing_tokens_reports_token_span() {
+        let tokens = ["hello", "world"];
+        let err = parse_complete_input::<_, HelloParser>(TokenStream::new(&tokens))
+            .err()
+            .expect("expected trailing token input error");
+        assert_eq!(err.span(), Some(SourceSpan::new(1, 2)));
+    }
+
+    #[test]
+    fn test_with_parse_offset_scope_if_missing_reuses_existing_scope() {
+        let input = "abcdef";
+        let sub = &input[2..];
+        let mut context = ParseOffsetContext::new();
+
+        with_parse_offset_scope(&mut context, input, |context| {
+            let roots_before = context.roots.len();
+            with_parse_offset_scope_if_missing(context, sub, |context| {
+                assert_eq!(context.roots.len(), roots_before);
+                assert_eq!(current_parse_offset(context, sub), 2);
+            });
+            assert_eq!(context.roots.len(), roots_before);
+        });
+
+        assert!(context.roots.is_empty());
+    }
+
+    #[test]
+    fn test_with_parse_offset_scope_if_missing_pushes_when_unscoped() {
+        let input = "abcdef";
+        let sub = &input[2..];
+        let mut context = ParseOffsetContext::new();
+
+        with_parse_offset_scope_if_missing(&mut context, sub, |context| {
+            assert_eq!(context.roots.len(), 1);
+            assert_eq!(current_parse_offset(context, sub), 0);
+        });
+
+        assert!(context.roots.is_empty());
+    }
+
+    #[test]
+    fn test_current_parse_offset_prefers_innermost_scope() {
+        let input = "abcdef";
+        let inner = &input[2..5];
+        let inner_tail = &inner[1..];
+        let mut context = ParseOffsetContext::new();
+
+        with_parse_offset_scope(&mut context, input, |context| {
+            assert_eq!(current_parse_offset(context, inner), 2);
+
+            with_parse_offset_scope(context, inner, |context| {
+                assert_eq!(current_parse_offset(context, inner), 0);
+                assert_eq!(current_parse_offset(context, inner_tail), 1);
+            });
+
+            assert_eq!(current_parse_offset(context, inner_tail), 3);
+        });
+    }
+
+    #[test]
     fn test_parse_complete_tracks_nested_span_offset() {
         type Parser = crate::and!(Ws<i64>, Span<Ws<KwNull>>);
         let result = parse_complete::<Parser>("42 null").unwrap();
@@ -418,6 +493,13 @@ mod tests {
         type Parser = crate::and!(Ws<i64>, Ws<KwNull>);
         let err = parse_complete::<Parser>("42 nope").unwrap_err();
         assert_eq!(err.span(), Some(SourceSpan::point(3)));
+    }
+
+    #[test]
+    fn test_parse_complete_tracks_eof_after_partial_consumption() {
+        type Parser = crate::and!(char, char);
+        let err = parse_complete::<Parser>("a").unwrap_err();
+        assert_eq!(err.span(), Some(SourceSpan::point(1)));
     }
 
     #[test]

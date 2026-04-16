@@ -37,7 +37,10 @@ macro_rules! filter_str {
             I: $crate::input::Input<'a>,
             S: AsRef<str> + From<&'a str>,
         {
-            fn parse(input: I) -> $crate::error::ParseResult<(Self, I)> {
+            fn parse_with_context(
+                input: I,
+                _context: &mut $crate::parse::ParseOffsetContext,
+            ) -> $crate::error::ParseResult<(Self, I)> {
                 let (s, rest) = input.take_while($filter)?;
                 if s.is_empty() {
                     return Err($crate::error::ParseError::custom(format!(
@@ -94,8 +97,11 @@ macro_rules! parse_filtered {
                 I: Input<'a>,
                 $ty: Parse<'a, I>,
             {
-                fn parse(input: I) -> ParseResult<(Self, I)> {
-                    let (result, rest) = <$ty>::parse(input)?;
+                fn parse_with_context(
+                    input: I,
+                    context: &mut $crate::parse::ParseOffsetContext,
+                ) -> ParseResult<(Self, I)> {
+                    let (result, rest) = <$ty>::parse_with_context(input, context)?;
                     if !$filter(result) {
                         return Err($crate::error::ParseError::custom(format!(
                             "expected {}, found '{}'",

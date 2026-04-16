@@ -30,11 +30,14 @@ where
     I: crate::input::Input<'a>,
     T: crate::parse::Parse<'a, I>,
 {
-    fn parse(input: I) -> crate::error::ParseResult<(Self, I)> {
+    fn parse_with_context(
+        input: I,
+        context: &mut crate::parse::ParseOffsetContext,
+    ) -> crate::error::ParseResult<(Self, I)> {
         let mut items = Vec::new();
         let mut rest = input;
 
-        while let Ok((item, new_rest)) = T::parse(rest) {
+        while let Ok((item, new_rest)) = T::parse_with_context(rest, context) {
             crate::collections::ensure_progress(rest, new_rest, "Many0")?;
             items.push(item);
             rest = new_rest;
@@ -82,14 +85,17 @@ where
     I: crate::input::Input<'a>,
     T: crate::parse::Parse<'a, I>,
 {
-    fn parse(input: I) -> crate::error::ParseResult<(Self, I)> {
-        let (first, mut rest) = T::parse(input)?;
+    fn parse_with_context(
+        input: I,
+        context: &mut crate::parse::ParseOffsetContext,
+    ) -> crate::error::ParseResult<(Self, I)> {
+        let (first, mut rest) = T::parse_with_context(input, context)?;
         crate::collections::ensure_progress(input, rest, "Many1")?;
 
         let mut items = Vec::new();
         items.push(first);
 
-        while let Ok((item, new_rest)) = T::parse(rest) {
+        while let Ok((item, new_rest)) = T::parse_with_context(rest, context) {
             crate::collections::ensure_progress(rest, new_rest, "Many1")?;
             items.push(item);
             rest = new_rest;

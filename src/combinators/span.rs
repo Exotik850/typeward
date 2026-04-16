@@ -1,6 +1,9 @@
 use crate::{
     error::{ParseResult, SourceSpan},
-    parse::{Parse, ParseOffsetInput, current_parse_offset, with_parse_offset_scope_if_missing},
+    parse::{
+        Parse, ParseOffsetContext, ParseOffsetInput, current_parse_offset, with_parse_offset_scope,
+        with_parse_offset_scope_if_missing,
+    },
 };
 
 /// Wraps a parser output with the input span it consumed.
@@ -62,14 +65,14 @@ where
     I: ParseOffsetInput<'a>,
     P: Parse<'a, I>,
 {
-    fn parse(input: I) -> ParseResult<(Self, I)> {
-        with_parse_offset_scope_if_missing(input, || {
-            let start = current_parse_offset(input);
+    fn parse_with_context(input: I, context: &mut ParseOffsetContext) -> ParseResult<(Self, I)> {
+        with_parse_offset_scope_if_missing(context, input, |context| {
+            let start = current_parse_offset(context, input);
 
-            match P::parse(input) {
+            match P::parse_with_context(input, context) {
                 Ok((parsed, rest)) => {
                     let consumed = input.input_len().saturating_sub(rest.input_len());
-                    let span = SourceSpan::new(start, start + consumed);
+                    let span = SourceSpan::from_start_len(start, consumed);
                     Ok((Self::new(parsed, span), rest))
                 }
                 Err(err) => Err(err.with_span(SourceSpan::point(start))),
@@ -91,7 +94,10 @@ pub trait SpanExt: Sized {
         I: ParseOffsetInput<'a>,
         Self::Spanned: Parse<'a, I>,
     {
-        Self::Spanned::parse(input)
+        let mut context = ParseOffsetContext::new();
+        with_parse_offset_scope(&mut context, input, |context| {
+            Self::Spanned::parse_with_context(input, context)
+        })
     }
 }
 
@@ -103,6 +109,7 @@ impl<T> SpanExt for T {
 mod tests {
     use super::*;
     use crate::combinators::ws::Ws;
+    use crate::input::TokenStream;
     use crate::literals::KwNull;
 
     #[test]
@@ -122,7 +129,7 @@ mod tests {
     #[test]
     fn extension_trait_parses_spanned() {
         let (spanned, rest) = bool::parse_spanned("true false").unwrap();
-        assert_eq!(spanned.inner, true);
+        assert_eq!(spanned, true);
         assert_eq!(spanned.span, 0..4);
         assert_eq!(rest, " false");
     }
@@ -133,5 +140,17 @@ mod tests {
         let (spanned, rest) = Parser::parse_spanned("42 null!").unwrap();
         assert_eq!(spanned.inner.right.span, 2..7);
         assert_eq!(rest, "!");
+    }
+
+    #[test]
+    fn parse_spanned_tracks_token_offsets_without_complete_parse() {
+        type Parser = crate::and!(Ws<i64>, Span<Ws<KwNull>>);
+        let tokens = ["42", "null", "!"];
+
+        let (spanned, rest) = Parser::parse_spanned(TokenStream::new(&tokens)).unwrap();
+
+        assert_eq!(spanned.span, 0..2);
+        assert_eq!(spanned.inner.right.span, 1..2);
+        assert_eq!(rest.as_slice(), &["!"]);
     }
 }

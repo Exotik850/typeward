@@ -39,13 +39,16 @@ where
     T: Parse<'a, I>,
     S: Parse<'a, I>,
 {
-    fn parse(input: I) -> ParseResult<(Self, I)> {
+    fn parse_with_context(
+        input: I,
+        context: &mut crate::parse::ParseOffsetContext,
+    ) -> ParseResult<(Self, I)> {
         let mut items = Vec::new();
         let mut separators = Vec::new();
         let mut input = input;
 
         // Parse the first item
-        let (first_item, remaining) = T::parse(input)?;
+        let (first_item, remaining) = T::parse_with_context(input, context)?;
         if input.input_len() == remaining.input_len() {
             return Err(crate::error::ParseError::custom(
                 "Separated item parser matched without consuming input",
@@ -56,7 +59,7 @@ where
 
         loop {
             // Try to parse a separator
-            match S::parse(input) {
+            match S::parse_with_context(input, context) {
                 Ok((sep, remaining)) => {
                     if input.input_len() == remaining.input_len() {
                         return Err(crate::error::ParseError::custom(
@@ -70,7 +73,7 @@ where
             }
 
             // Parse the next item
-            let (item, remaining) = T::parse(input)?;
+            let (item, remaining) = T::parse_with_context(input, context)?;
             if input.input_len() == remaining.input_len() {
                 return Err(crate::error::ParseError::custom(
                     "Separated item parser matched without consuming input",
@@ -130,12 +133,15 @@ where
     T: Parse<'a, I>,
     S: Parse<'a, I>,
 {
-    fn parse(input: I) -> ParseResult<(Self, I)> {
+    fn parse_with_context(
+        input: I,
+        context: &mut crate::parse::ParseOffsetContext,
+    ) -> ParseResult<(Self, I)> {
         let mut items = Vec::new();
         let mut separators = Vec::new();
         let mut input = input;
 
-        match T::parse(input) {
+        match T::parse_with_context(input, context) {
             Ok((first_item, remaining)) => {
                 if input.input_len() == remaining.input_len() {
                     return Err(crate::error::ParseError::custom(
@@ -151,7 +157,7 @@ where
         }
 
         loop {
-            match S::parse(input) {
+            match S::parse_with_context(input, context) {
                 Ok((sep, remaining)) => {
                     if input.input_len() == remaining.input_len() {
                         return Err(crate::error::ParseError::custom(
@@ -164,7 +170,7 @@ where
                 Err(_) => break,
             }
 
-            let (item, remaining) = T::parse(input)?;
+            let (item, remaining) = T::parse_with_context(input, context)?;
             if input.input_len() == remaining.input_len() {
                 return Err(crate::error::ParseError::custom(
                     "Separated0 item parser matched without consuming input",

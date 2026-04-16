@@ -39,7 +39,7 @@ pub mod prelude {
     pub use crate::input::{Input, TokenStream};
     pub use crate::literals::*;
     pub use crate::parse::{
-        Parse, ParseOffsetInput, parse_complete, parse_complete_input,
+        Parse, ParseOffsetContext, ParseOffsetInput, parse_complete, parse_complete_input,
         parse_complete_input_spanned, parse_complete_spanned,
     };
     pub use crate::primitives::prelude::*;

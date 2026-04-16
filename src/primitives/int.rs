@@ -9,8 +9,11 @@ macro_rules! parse_unsigned {
             where
                 I: Input<'a>,
             {
-                fn parse(input: I) -> ParseResult<(Self, I)> {
-                    let (result, rest) = Digit::<&str>::parse(input)?;
+                fn parse_with_context(
+                    input: I,
+                    context: &mut crate::parse::ParseOffsetContext,
+                ) -> ParseResult<(Self, I)> {
+                    let (result, rest) = Digit::<&str>::parse_with_context(input, context)?;
                     if result.is_empty() {
                         return Err(crate::error::ParseError::custom(format!(
                             "expected {}, found '{}'",
@@ -41,7 +44,10 @@ macro_rules! parse_signed {
             where
                 I: Input<'a>,
             {
-                fn parse(input: I) -> ParseResult<(Self, I)> {
+                fn parse_with_context(
+                    input: I,
+                    context: &mut crate::parse::ParseOffsetContext,
+                ) -> ParseResult<(Self, I)> {
                     let input = input.trim_start();
                     let (sign, rest) = if let Some(rest) = input.strip_prefix("-")? {
                         (-1, rest)
@@ -50,7 +56,7 @@ macro_rules! parse_signed {
                     } else {
                         (1, input)
                     };
-                    let (result, rest) = Digit::<&str>::parse(rest)?;
+                    let (result, rest) = Digit::<&str>::parse_with_context(rest, context)?;
                     if result.is_empty() {
                         return Err(crate::error::ParseError::custom(format!(
                             "expected {}, found '{}'",

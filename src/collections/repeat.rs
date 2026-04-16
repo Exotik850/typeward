@@ -33,12 +33,15 @@ where
     I: crate::input::Input<'a>,
     T: crate::parse::Parse<'a, I>,
 {
-    fn parse(input: I) -> crate::error::ParseResult<(Self, I)> {
+    fn parse_with_context(
+        input: I,
+        context: &mut crate::parse::ParseOffsetContext,
+    ) -> crate::error::ParseResult<(Self, I)> {
         let mut items = Vec::new();
         let mut rest = input;
 
         while items.len() < MAX {
-            match T::parse(rest) {
+            match T::parse_with_context(rest, context) {
                 Ok((item, new_rest)) => {
                     crate::collections::ensure_progress(rest, new_rest, "Repeat")?;
                     items.push(item);
@@ -97,17 +100,20 @@ where
     T: Parse<'a, I>,
     U: Parse<'a, I>,
 {
-    fn parse(input: I) -> crate::prelude::ParseResult<(Self, I)> {
+    fn parse_with_context(
+        input: I,
+        context: &mut crate::parse::ParseOffsetContext,
+    ) -> crate::prelude::ParseResult<(Self, I)> {
         // repeatedly parse T until U succeeds, but do not consume the input for U
         let mut items = Vec::new();
         let mut rest = input;
 
         loop {
-            if let Ok((_, _)) = U::parse(rest) {
+            if let Ok((_, _)) = U::parse_with_context(rest, context) {
                 break;
             }
 
-            match T::parse(rest) {
+            match T::parse_with_context(rest, context) {
                 Ok((item, new_rest)) => {
                     crate::collections::ensure_progress(rest, new_rest, "RepeatUntil")?;
                     items.push(item);
