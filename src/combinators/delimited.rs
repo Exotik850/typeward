@@ -25,6 +25,37 @@ pub struct Delimited<S, E, I> {
     pub inner: I,
 }
 
+/// A parser that matches content wrapped between start and end tokens without
+/// automatic whitespace trimming.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct DelimitedExact<S, E, I> {
+    pub start: S,
+    pub end: E,
+    pub inner: I,
+}
+
+impl<S, E, I> DelimitedExact<S, E, I> {
+    pub fn map_inner<J>(self, f: impl FnOnce(I) -> J) -> DelimitedExact<S, E, J> {
+        DelimitedExact {
+            start: self.start,
+            end: self.end,
+            inner: f(self.inner),
+        }
+    }
+
+    pub fn into_inner(self) -> I {
+        self.inner
+    }
+
+    pub fn inner(&self) -> &I {
+        &self.inner
+    }
+
+    pub fn inner_mut(&mut self) -> &mut I {
+        &mut self.inner
+    }
+}
+
 impl<S, E, I> Delimited<S, E, I> {
     /// Map the inner content of the delimited parser
     pub fn map_inner<J>(self, f: impl FnOnce(I) -> J) -> Delimited<S, E, J> {
@@ -63,6 +94,22 @@ where
         let (end, remaining) = E::parse(remaining)?;
 
         Ok((Delimited { start, end, inner }, remaining))
+    }
+}
+
+impl<'a, In, S, E, I> Parse<'a, In> for DelimitedExact<S, E, I>
+where
+    In: crate::input::Input<'a>,
+    S: Parse<'a, In>,
+    E: Parse<'a, In>,
+    I: Parse<'a, In>,
+{
+    fn parse(input: In) -> ParseResult<(Self, In)> {
+        let (start, remaining) = S::parse(input)?;
+        let (inner, remaining) = I::parse(remaining)?;
+        let (end, remaining) = E::parse(remaining)?;
+
+        Ok((DelimitedExact { start, end, inner }, remaining))
     }
 }
 
@@ -118,5 +165,13 @@ mod tests {
         let input = "(42";
         let result = Delimited::<LParen, RParen, i64>::parse(input);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_delimited_exact_preserves_inner_whitespace() {
+        let input = "(  42)";
+        let (result, rest) = DelimitedExact::<LParen, RParen, crate::primitives::str::TakeTillToken<RParen>>::parse(input).unwrap();
+        assert_eq!(result.inner, "  42");
+        assert_eq!(rest, "");
     }
 }
