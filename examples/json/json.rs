@@ -74,7 +74,14 @@ type JsonString = DelimitedExact<Ws<DoubleQuote>, DoubleQuote, TakeTillToken<Dou
 type JsonMember = and!(JsonString, Ws<Colon>, JsonValue);
 type JsonArray = Delimited<Ws<LBracket>, Ws<RBracket>, Separated0<JsonValue, Ws<Comma>>>;
 type JsonObject = Delimited<Ws<LBrace>, Ws<RBrace>, Separated0<JsonMember, Ws<Comma>>>;
-type JsonParser = or!(Ws<KwNull>, Ws<bool>, Ws<f64>, JsonString, JsonArray, JsonObject);
+type JsonParser = or!(
+    Ws<KwNull>,
+    Ws<bool>,
+    Ws<f64>,
+    JsonString,
+    JsonArray,
+    JsonObject
+);
 
 impl<'a> Parse<'a> for JsonValue {
     fn parse(input: &'a str) -> ParseResult<(Self, &'a str)> {
@@ -119,10 +126,13 @@ mod tests {
 
     #[test]
     fn parse_nested_json() {
-        let value = parse_json(r#"{ "name": "typeward", "ok": true, "items": [1, 2, 3] }"#)
-            .unwrap();
+        let value =
+            parse_json(r#"{ "name": "typeward", "ok": true, "items": [1, 2, 3] }"#).unwrap();
 
-        assert_eq!(value.get("name").and_then(JsonValue::as_str), Some("typeward"));
+        assert_eq!(
+            value.get("name").and_then(JsonValue::as_str),
+            Some("typeward")
+        );
         assert_eq!(value.get("ok").and_then(JsonValue::as_bool), Some(true));
         assert_eq!(
             value

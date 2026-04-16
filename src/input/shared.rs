@@ -6,7 +6,11 @@ pub(super) fn utf8(bytes: &[u8]) -> ParseResult<&str> {
         .map_err(|err| ParseError::custom(format!("invalid UTF-8 input: {err}")))
 }
 
-pub(super) fn checked_consumed_len(input_len: usize, end_len: usize, input_name: &str) -> ParseResult<usize> {
+pub(super) fn checked_consumed_len(
+    input_len: usize,
+    end_len: usize,
+    input_name: &str,
+) -> ParseResult<usize> {
     if end_len > input_len {
         return Err(ParseError::custom(format!(
             "invalid input bounds while slicing {input_name} input"

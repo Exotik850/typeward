@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
-use crate::{error::ParseResult, input::Input, parse::Parse};
 use crate::token::Token;
+use crate::{error::ParseResult, input::Input, parse::Parse};
 
 impl<'a, I> Parse<'a, I> for &'a str
 where
