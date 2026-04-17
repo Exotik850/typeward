@@ -74,7 +74,6 @@ dependencies = [
  "array-util",
  "pastey",
  "stable-pattern",
- "typeward-macros",
 ]
 
 [[package]]
