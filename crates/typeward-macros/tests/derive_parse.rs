@@ -73,6 +73,14 @@ enum MappedValue {
     Word(#[parse(from(Ws<String>, |ws| NonParseString(ws.into_inner())))] NonParseString),
 }
 
+#[derive(Debug, PartialEq, Parse)]
+struct WithGeneric<T>
+// where
+//     T: Parse,
+{
+    value: Ws<T>,
+}
+
 #[test]
 fn derive_parse_named_struct_uses_and_semantics() {
     let parsed = parse_complete::<NamedPair>("42 null").unwrap();
@@ -150,4 +158,10 @@ fn derive_parse_field_from_attribute_works_for_enum_variants() {
 
     let number = parse_complete::<MappedValue>("   11").unwrap();
     assert!(matches!(number, MappedValue::Number(value) if value == 11));
+}
+
+#[test]
+fn derive_parse_with_generic_field_from_attribute() {
+    let parsed = parse_complete::<WithGeneric<Ws<String>>>("   hello").unwrap();
+    assert_eq!(*parsed.value.into_inner(), "hello");
 }
