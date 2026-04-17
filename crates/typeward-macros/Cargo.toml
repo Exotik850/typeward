@@ -2,6 +2,10 @@
 name = "typeward-macros"
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
+description = "Procedural macros for the Typeward parser combinator library."
+repository = "https://github.com/Exotik850/typeward"
+keywords = ["macro", "typeward", "parser combinator", "rust"]
 
 [lib]
 proc-macro = true
