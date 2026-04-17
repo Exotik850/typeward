@@ -151,3 +151,19 @@ mod tests {
         assert!(parse_json(r#"{ "x": }"#).is_err());
     }
 }
+
+fn main() {
+    let json_str = r#"
+        {
+            "name": "typeward",
+            "version": 0.2,
+            "features": ["derive", "arrays"],
+            "nested": { "a": 1, "b": [true, false] }
+        }
+    "#;
+
+    match parse_json(json_str) {
+        Ok(json) => println!("Parsed JSON: {:#?}", json),
+        Err(err) => eprintln!("Failed to parse JSON: {err}"),
+    }
+}

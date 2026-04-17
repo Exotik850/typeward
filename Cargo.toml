@@ -15,5 +15,9 @@ default = ["arrays", "macros"]
 arrays = ["dep:array-util"]
 macros = ["typeward-macros"]
 
+[[example]]
+name = "json"
+path = "examples/json.rs"
+
 [workspace]
-members = ["crates/typeward-macros", "examples/json"]
+members = ["crates/typeward-macros"]
