@@ -173,7 +173,7 @@ pub(crate) fn build_binding_transform_tokens(
 
             quote! {
                 let (#(#parsed_bindings),*) =
-                    #crate_path::unpack_and!(#parsed_value, #(#parser_tys),*);
+                    #crate_path::unpack_and!(#parsed_value, (#(#parser_tys),*));
                 #(#mapping_stmts)*
             }
         }

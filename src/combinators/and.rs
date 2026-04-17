@@ -71,10 +71,10 @@ macro_rules! new_and {
 
 #[macro_export]
 macro_rules! unpack_and {
-    ($val:expr, $single:ty $(,)?) => {
+    ($val:expr, ($single:ty $(,)?)) => {
         ($val,)
     };
-    ($val:expr, $head:ty, $($tail:ty),+ $(,)?) => {
+    ($val:expr, ($head:ty, $($tail:ty),+ $(,)?)) => {
         $crate::unpack_and!(@collect $val; ; $head, $($tail),+)
     };
     (@collect $val:expr; $($out:expr,)* ; $head:ty, $($tail:ty),+) => {{
@@ -91,21 +91,21 @@ mod tests {
     #[test]
     fn unpack_and_two_values() {
         let value = crate::new_and!(1_u8, 2_u16);
-        let tuple: (u8, u16) = crate::unpack_and!(value, u8, u16);
+        let tuple: (u8, u16) = crate::unpack_and!(value, (u8, u16));
         assert_eq!(tuple, (1, 2));
     }
 
     #[test]
     fn unpack_and_three_values() {
         let value = crate::new_and!(1_u8, 2_u16, 3_u32);
-        let tuple: (u8, u16, u32) = crate::unpack_and!(value, u8, u16, u32);
+        let tuple: (u8, u16, u32) = crate::unpack_and!(value, (u8, u16, u32));
         assert_eq!(tuple, (1, 2, 3));
     }
 
     #[test]
     fn unpack_and_four_values() {
         let value = crate::new_and!(1_u8, 2_u16, 3_u32, 4_u64);
-        let tuple: (u8, u16, u32, u64) = crate::unpack_and!(value, u8, u16, u32, u64);
+        let tuple: (u8, u16, u32, u64) = crate::unpack_and!(value, (u8, u16, u32, u64));
         assert_eq!(tuple, (1, 2, 3, 4));
     }
 }

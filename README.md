@@ -117,7 +117,7 @@ The crate provides helper macros for composing parsers ergonomically:
 - `and!(A, B, C)` — compose a tuple parser from multiple types
 - `or!(A, B, C)` — try parsers in sequence, returning the first match
 - `or_match!(val, arm => expr, ...)` — destructure `Or` results into values
-- `unpack_and!(val, (a, b, c))` — destructure `And` tuple results
+- `unpack_and!(val, (A, B, C))` — destructure `And` tuple results
 
 ## Example
 

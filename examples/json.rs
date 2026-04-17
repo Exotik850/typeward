@@ -101,7 +101,7 @@ impl<'a> Parse<'a> for JsonValue {
                 let mut map = BTreeMap::new();
                 for member in object.inner.into_items() {
                     let (key, _colon, value) =
-                        unpack_and!(member, JsonString, Ws<Colon>, JsonValue);
+                        unpack_and!(member, (JsonString, Ws<Colon>, JsonValue));
                     map.insert(key.inner.into_inner(), value);
                 }
                 JsonValue::Object(map)
