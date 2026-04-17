@@ -74,6 +74,28 @@ enum MappedValue {
 }
 
 #[derive(Debug, PartialEq, Parse)]
+struct WsAttributeNamed {
+    #[parse(ws)]
+    left: i64,
+    #[parse(ws)]
+    right: KwNull,
+}
+
+#[derive(Debug, PartialEq, Parse)]
+struct WsAttributeTuple(#[parse(ws)] KwTrue, #[parse(ws)] i64);
+
+#[derive(Debug, PartialEq, Parse)]
+enum WsAttributeEnum {
+    Pair {
+        #[parse(ws)]
+        left: KwTrue,
+        #[parse(ws)]
+        value: i64,
+    },
+    Word(#[parse(ws)] IdentifierString),
+}
+
+#[derive(Debug, PartialEq, Parse)]
 struct WithGeneric<T>
 // where
 //     T: Parse,
@@ -164,4 +186,27 @@ fn derive_parse_field_from_attribute_works_for_enum_variants() {
 fn derive_parse_with_generic_field_from_attribute() {
     let parsed = parse_complete::<WithGeneric<Ws<String>>>("   hello").unwrap();
     assert_eq!(*parsed.value.into_inner(), "hello");
+}
+
+#[test]
+fn derive_parse_field_ws_attribute_for_named_struct() {
+    let parsed = parse_complete::<WsAttributeNamed>("   42   null").unwrap();
+    assert_eq!(parsed.left, 42);
+    assert_eq!(parsed.right, KwNull);
+}
+
+#[test]
+fn derive_parse_field_ws_attribute_for_tuple_struct() {
+    let parsed = parse_complete::<WsAttributeTuple>("   true   7").unwrap();
+    assert_eq!(parsed.0, KwTrue);
+    assert_eq!(parsed.1, 7);
+}
+
+#[test]
+fn derive_parse_field_ws_attribute_for_enum_variants() {
+    let pair = parse_complete::<WsAttributeEnum>("   true   7").unwrap();
+    assert!(matches!(pair, WsAttributeEnum::Pair { left: _, value } if value == 7));
+
+    let word = parse_complete::<WsAttributeEnum>("   alpha_9").unwrap();
+    assert!(matches!(word, WsAttributeEnum::Word(value) if value.value == "alpha_9"));
 }

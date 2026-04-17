@@ -66,17 +66,20 @@ pub(crate) fn parser_type_from_field_plans(
     parser_type_from_types(&types, crate_path)
 }
 
-pub(crate) fn collect_all_parser_field_types(data: &Data) -> syn::Result<Vec<Type>> {
+pub(crate) fn collect_all_parser_field_types(
+    data: &Data,
+    crate_path: &Path,
+) -> syn::Result<Vec<Type>> {
     match data {
-        Data::Struct(data_struct) => collect_field_parser_types(&data_struct.fields),
+        Data::Struct(data_struct) => collect_field_parser_types(&data_struct.fields, crate_path),
         Data::Union(data_union) => {
             let union_fields = Fields::Named(data_union.fields.clone());
-            collect_field_parser_types(&union_fields)
+            collect_field_parser_types(&union_fields, crate_path)
         }
         Data::Enum(data_enum) => data_enum
             .variants
             .iter()
-            .map(|variant| collect_field_parser_types(&variant.fields))
+            .map(|variant| collect_field_parser_types(&variant.fields, crate_path))
             .collect::<syn::Result<Vec<_>>>()
             .map(|nested| nested.into_iter().flatten().collect()),
     }
@@ -89,7 +92,7 @@ pub(crate) fn build_fields_parse_plan(
     binding_prefix: &str,
 ) -> syn::Result<ParsedFields> {
     let shape = describe_fields(fields);
-    let field_plans = collect_field_plans(fields)?;
+    let field_plans = collect_field_plans(fields, crate_path)?;
 
     let bindings: Vec<Ident> = (0..field_plans.len())
         .map(|index| format_ident!("{binding_prefix}_{index}"))
@@ -248,22 +251,31 @@ pub(crate) fn union_constructor(field_names: &[Ident], bindings: &[Ident]) -> To
     })
 }
 
-fn collect_field_parser_types(fields: &Fields) -> syn::Result<Vec<Type>> {
-    collect_field_plans(fields).map(|plans| plans.into_iter().map(|plan| plan.parser_ty).collect())
+fn collect_field_parser_types(fields: &Fields, crate_path: &Path) -> syn::Result<Vec<Type>> {
+    collect_field_plans(fields, crate_path)
+        .map(|plans| plans.into_iter().map(|plan| plan.parser_ty).collect())
 }
 
-fn collect_field_plans(fields: &Fields) -> syn::Result<Vec<FieldPlan>> {
+fn collect_field_plans(fields: &Fields, crate_path: &Path) -> syn::Result<Vec<FieldPlan>> {
     match fields {
-        Fields::Named(named) => named.named.iter().map(field_plan).collect(),
-        Fields::Unnamed(unnamed) => unnamed.unnamed.iter().map(field_plan).collect(),
+        Fields::Named(named) => named
+            .named
+            .iter()
+            .map(|field| field_plan(field, crate_path))
+            .collect(),
+        Fields::Unnamed(unnamed) => unnamed
+            .unnamed
+            .iter()
+            .map(|field| field_plan(field, crate_path))
+            .collect(),
         Fields::Unit => Ok(Vec::new()),
     }
 }
 
-fn field_plan(field: &Field) -> syn::Result<FieldPlan> {
+fn field_plan(field: &Field, crate_path: &Path) -> syn::Result<FieldPlan> {
     let attrs = FieldAttrs::from_field(field)?;
     Ok(FieldPlan {
-        parser_ty: attrs.parser_ty_or(&field.ty),
-        mapper: attrs.from.map(|from| from.mapper),
+        parser_ty: attrs.parser_ty_or(&field.ty, crate_path),
+        mapper: attrs.mapper(),
     })
 }
