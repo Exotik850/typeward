@@ -121,7 +121,7 @@ The crate provides helper macros for composing parsers ergonomically:
 
 ## Example
 
-See the [`examples/json/`](examples/json/) directory for a complete JSON parser built with typeward.
+See the [`examples/json.rs`](examples/json.rs) file for a complete JSON parser built with typeward.
 
 ## License
 
