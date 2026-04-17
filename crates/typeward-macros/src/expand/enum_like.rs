@@ -114,7 +114,7 @@ fn expand_multi_variant(
 
     quote! {
         let (__typeward_or_value, __typeward_remaining) =
-            <#crate_path::or!(#(#parser_types),*) as #crate_path::parse::Parse<#lifetime, #input_ident>>::parse(input)?;
+            <#crate_path::or!(#(#parser_types),*) as #crate_path::parse::Parse<#lifetime, #input_ident>>::parse_with_context(input, context)?;
         let __typeward_value = #crate_path::or_match!(
             __typeward_or_value,
             #(#patterns => #value_exprs),*

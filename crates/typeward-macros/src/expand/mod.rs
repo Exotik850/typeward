@@ -68,7 +68,10 @@ fn expand_parse_impl(input: &DeriveInput) -> syn::Result<TokenStream> {
 
     Ok(quote! {
         impl #impl_generics #crate_path::parse::Parse<#lifetime, #input_ident> for #name #ty_generics #where_clause {
-            fn parse(input: #input_ident) -> #crate_path::error::ParseResult<(Self, #input_ident)> {
+            fn parse_with_context(
+                input: #input_ident,
+                context: &mut #crate_path::parse::ParseOffsetContext,
+            ) -> #crate_path::error::ParseResult<(Self, #input_ident)> {
                 #body
             }
         }

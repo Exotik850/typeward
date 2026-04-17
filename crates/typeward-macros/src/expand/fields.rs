@@ -118,7 +118,7 @@ pub(crate) fn build_fields_parse_plan(
 
             quote! {
                 let (#parsed_value, __typeward_remaining) =
-                    <#parser_type as #crate_path::parse::Parse<#lifetime, #input_ident>>::parse(input)?;
+                    <#parser_type as #crate_path::parse::Parse<#lifetime, #input_ident>>::parse_with_context(input, context)?;
                 #binding_setup_tokens
             }
         }

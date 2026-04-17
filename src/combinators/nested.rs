@@ -1,7 +1,7 @@
 use crate::{
     error::{ParseError, ParseResult},
     literals::{LBrace, LBracket, LParen, RBrace, RBracket, RParen},
-    parse::{Parse, ParseOffsetInput, parse_complete_input},
+    parse::{Parse, ParseOffsetInput},
     token::Token,
 };
 

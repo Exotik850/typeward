@@ -357,7 +357,7 @@ mod tests {
     use crate::literals::KwNull;
 
     lit_token!(HelloParser, "hello");
-    
+
     #[test]
     fn test_parse_complete_success() {
         let result = parse_complete::<HelloParser>("hello").unwrap();
