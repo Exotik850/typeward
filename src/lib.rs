@@ -15,6 +15,11 @@
 //! - [`combinators`] — Parser combinators like [`Delimited`]
 //! - [`collections`] — Repetition/collection combinators like [`Many0`] and [`Repeat`]
 
+extern crate self as typeward;
+
+#[cfg(feature = "macros")]
+pub use typeward_macros::Parse;
+
 pub mod collections;
 pub mod combinators;
 pub mod error;
@@ -45,4 +50,6 @@ pub mod prelude {
     pub use crate::primitives::prelude::*;
     pub use crate::token::Token;
     pub use crate::{and, new_and, or, or_match, unpack_and};
+    #[cfg(feature = "macros")]
+    pub use typeward_macros::Parse;
 }
