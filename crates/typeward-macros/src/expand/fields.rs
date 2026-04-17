@@ -273,9 +273,9 @@ fn collect_field_plans(fields: &Fields, crate_path: &Path) -> syn::Result<Vec<Fi
 }
 
 fn field_plan(field: &Field, crate_path: &Path) -> syn::Result<FieldPlan> {
-    let attrs = FieldAttrs::from_field(field)?;
+    let attrs = FieldAttrs::from_field(field, crate_path)?;
     Ok(FieldPlan {
-        parser_ty: attrs.parser_ty_or(&field.ty, crate_path),
+        parser_ty: attrs.parser_ty_or(&field.ty),
         mapper: attrs.mapper(),
     })
 }
