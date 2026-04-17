@@ -1,8 +1,9 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use syn::{Data, Fields, Ident, Path, Type};
+use syn::{Data, Expr, Field, Fields, Ident, Path, Type};
 
 use super::ParseGenerics;
+use crate::attrs::FieldAttrs;
 
 #[derive(Clone)]
 pub(crate) enum FieldShape {
@@ -11,15 +12,21 @@ pub(crate) enum FieldShape {
     Unnamed(usize),
 }
 
+#[derive(Clone)]
+pub(crate) struct FieldPlan {
+    pub(crate) parser_ty: Type,
+    pub(crate) mapper: Option<Expr>,
+}
+
 pub(crate) struct ParsedFields {
     pub(crate) parse_tokens: TokenStream,
     pub(crate) bindings: Vec<Ident>,
     pub(crate) shape: FieldShape,
-    pub(crate) field_types: Vec<Type>,
+    pub(crate) field_plans: Vec<FieldPlan>,
 }
 
-pub(crate) fn describe_fields(fields: &Fields) -> (FieldShape, Vec<Type>) {
-    let shape = match fields {
+pub(crate) fn describe_fields(fields: &Fields) -> FieldShape {
+    match fields {
         Fields::Named(named) => FieldShape::Named(
             named
                 .named
@@ -34,10 +41,7 @@ pub(crate) fn describe_fields(fields: &Fields) -> (FieldShape, Vec<Type>) {
         ),
         Fields::Unnamed(unnamed) => FieldShape::Unnamed(unnamed.unnamed.len()),
         Fields::Unit => FieldShape::Unit,
-    };
-
-    let types = collect_field_types(fields);
-    (shape, types)
+    }
 }
 
 pub(crate) fn parser_type_from_types(types: &[Type], crate_path: &Path) -> TokenStream {
@@ -51,20 +55,30 @@ pub(crate) fn parser_type_from_types(types: &[Type], crate_path: &Path) -> Token
     }
 }
 
-pub(crate) fn collect_all_field_types(data: &Data) -> Vec<Type> {
+pub(crate) fn parser_type_from_field_plans(
+    field_plans: &[FieldPlan],
+    crate_path: &Path,
+) -> TokenStream {
+    let types: Vec<_> = field_plans
+        .iter()
+        .map(|plan| plan.parser_ty.clone())
+        .collect();
+    parser_type_from_types(&types, crate_path)
+}
+
+pub(crate) fn collect_all_parser_field_types(data: &Data) -> syn::Result<Vec<Type>> {
     match data {
-        Data::Struct(data_struct) => collect_field_types(&data_struct.fields),
-        Data::Union(data_union) => data_union
-            .fields
-            .named
-            .iter()
-            .map(|field| field.ty.clone())
-            .collect(),
+        Data::Struct(data_struct) => collect_field_parser_types(&data_struct.fields),
+        Data::Union(data_union) => {
+            let union_fields = Fields::Named(data_union.fields.clone());
+            collect_field_parser_types(&union_fields)
+        }
         Data::Enum(data_enum) => data_enum
             .variants
             .iter()
-            .flat_map(|variant| collect_field_types(&variant.fields))
-            .collect(),
+            .map(|variant| collect_field_parser_types(&variant.fields))
+            .collect::<syn::Result<Vec<_>>>()
+            .map(|nested| nested.into_iter().flatten().collect()),
     }
 }
 
@@ -73,44 +87,115 @@ pub(crate) fn build_fields_parse_plan(
     crate_path: &Path,
     parse_generics: &ParseGenerics,
     binding_prefix: &str,
-) -> ParsedFields {
-    let (shape, types) = describe_fields(fields);
-    let bindings: Vec<Ident> = (0..types.len())
+) -> syn::Result<ParsedFields> {
+    let shape = describe_fields(fields);
+    let field_plans = collect_field_plans(fields)?;
+
+    let bindings: Vec<Ident> = (0..field_plans.len())
         .map(|index| format_ident!("{binding_prefix}_{index}"))
         .collect();
 
-    let lifetime = &parse_generics.lifetime;
-    let input_ident = &parse_generics.input_ident;
-
-    let parse_tokens = match types.len() {
+    let parse_tokens = match field_plans.len() {
         0 => {
             quote! {
                 let __typeward_remaining = input;
             }
         }
-        1 => {
-            let binding = &bindings[0];
-            let ty = &types[0];
+        _ => {
+            let lifetime = &parse_generics.lifetime;
+            let input_ident = &parse_generics.input_ident;
+            let parser_type = parser_type_from_field_plans(&field_plans, crate_path);
+            let parsed_value = format_ident!("{binding_prefix}_parsed_value");
+            let parsed_binding_prefix = format!("{binding_prefix}_parsed_field");
+            let parsed_value_expr = quote!(#parsed_value);
+            let binding_setup_tokens = build_binding_transform_tokens(
+                &bindings,
+                &field_plans,
+                &parsed_value_expr,
+                crate_path,
+                &parsed_binding_prefix,
+            );
 
             quote! {
-                let (#binding, __typeward_remaining) = <#ty as #crate_path::parse::Parse<#lifetime, #input_ident>>::parse(input)?;
-            }
-        }
-        _ => {
-            let and_parser_type = parser_type_from_types(&types, crate_path);
-            quote! {
-                let (__typeward_and_value, __typeward_remaining) =
-                    <#and_parser_type as #crate_path::parse::Parse<#lifetime, #input_ident>>::parse(input)?;
-                let (#(#bindings),*) = #crate_path::unpack_and!(__typeward_and_value, #(#types),*);
+                let (#parsed_value, __typeward_remaining) =
+                    <#parser_type as #crate_path::parse::Parse<#lifetime, #input_ident>>::parse(input)?;
+                #binding_setup_tokens
             }
         }
     };
 
-    ParsedFields {
+    Ok(ParsedFields {
         parse_tokens,
         bindings,
         shape,
-        field_types: types,
+        field_plans,
+    })
+}
+
+pub(crate) fn build_binding_transform_tokens(
+    bindings: &[Ident],
+    field_plans: &[FieldPlan],
+    parsed_value: &TokenStream,
+    crate_path: &Path,
+    parsed_binding_prefix: &str,
+) -> TokenStream {
+    debug_assert_eq!(bindings.len(), field_plans.len());
+
+    match bindings.len() {
+        0 => quote! {},
+        1 => {
+            let parsed_binding = format_ident!("{parsed_binding_prefix}_0");
+            let binding = &bindings[0];
+            let parser_ty = &field_plans[0].parser_ty;
+            let mapper = &field_plans[0].mapper;
+            let map_stmt = map_parsed_value(binding, &parsed_binding, parser_ty, mapper);
+
+            quote! {
+                let #parsed_binding = #parsed_value;
+                #map_stmt
+            }
+        }
+        _ => {
+            let parsed_bindings: Vec<Ident> = (0..bindings.len())
+                .map(|index| format_ident!("{parsed_binding_prefix}_{index}"))
+                .collect();
+
+            let mapping_stmts = bindings.iter().zip(&parsed_bindings).zip(field_plans).map(
+                |((binding, parsed_binding), plan)| {
+                    map_parsed_value(binding, parsed_binding, &plan.parser_ty, &plan.mapper)
+                },
+            );
+
+            let parser_tys: Vec<_> = field_plans.iter().map(|plan| &plan.parser_ty).collect();
+
+            quote! {
+                let (#(#parsed_bindings),*) =
+                    #crate_path::unpack_and!(#parsed_value, #(#parser_tys),*);
+                #(#mapping_stmts)*
+            }
+        }
+    }
+}
+
+fn map_parsed_value(
+    binding: &Ident,
+    parsed_binding: &Ident,
+    parser_ty: &Type,
+    mapper: &Option<Expr>,
+) -> TokenStream {
+    match mapper {
+        Some(mapper) => quote! {
+            let #binding = {
+                fn __typeward_apply_mapper<In, Out>(value: In, mapper: impl FnOnce(In) -> Out) -> Out {
+                    mapper(value)
+                }
+
+                __typeward_apply_mapper::<#parser_ty, _>(#parsed_binding, #mapper)
+            };
+        },
+        None => quote! {
+            let #binding = #parsed_binding;
+        },
     }
 }
 
@@ -163,14 +248,22 @@ pub(crate) fn union_constructor(field_names: &[Ident], bindings: &[Ident]) -> To
     })
 }
 
-pub(crate) fn collect_field_types(fields: &Fields) -> Vec<Type> {
+fn collect_field_parser_types(fields: &Fields) -> syn::Result<Vec<Type>> {
+    collect_field_plans(fields).map(|plans| plans.into_iter().map(|plan| plan.parser_ty).collect())
+}
+
+fn collect_field_plans(fields: &Fields) -> syn::Result<Vec<FieldPlan>> {
     match fields {
-        Fields::Named(named) => named.named.iter().map(|field| field.ty.clone()).collect(),
-        Fields::Unnamed(unnamed) => unnamed
-            .unnamed
-            .iter()
-            .map(|field| field.ty.clone())
-            .collect(),
-        Fields::Unit => Vec::new(),
+        Fields::Named(named) => named.named.iter().map(field_plan).collect(),
+        Fields::Unnamed(unnamed) => unnamed.unnamed.iter().map(field_plan).collect(),
+        Fields::Unit => Ok(Vec::new()),
     }
+}
+
+fn field_plan(field: &Field) -> syn::Result<FieldPlan> {
+    let attrs = FieldAttrs::from_field(field)?;
+    Ok(FieldPlan {
+        parser_ty: attrs.parser_ty_or(&field.ty),
+        mapper: attrs.from.map(|from| from.mapper),
+    })
 }

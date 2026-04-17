@@ -38,9 +38,13 @@ fn expand_parse_impl(input: &DeriveInput) -> syn::Result<TokenStream> {
         input_ident: unique_type_param(&input.generics, "__TypewardInput"),
     };
 
-    let all_field_types = fields::collect_all_field_types(&input.data);
-    let impl_header =
-        build_impl_header(input, &attrs.crate_path, &parse_generics, &all_field_types);
+    let all_parser_field_types = fields::collect_all_parser_field_types(&input.data)?;
+    let impl_header = build_impl_header(
+        input,
+        &attrs.crate_path,
+        &parse_generics,
+        &all_parser_field_types,
+    );
 
     let body = match &input.data {
         Data::Struct(data_struct) => {

@@ -17,7 +17,7 @@ pub(crate) fn expand_struct_body(
         crate_path,
         parse_generics,
         "__typeward_struct_field",
-    );
+    )?;
 
     let parse_tokens = plan.parse_tokens;
     let constructor = fields::struct_constructor(&plan.shape, &plan.bindings);
@@ -40,7 +40,7 @@ pub(crate) fn expand_union_body(
         crate_path,
         parse_generics,
         "__typeward_union_field",
-    );
+    )?;
 
     let field_names = match &plan.shape {
         FieldShape::Named(names) if !names.is_empty() => names,

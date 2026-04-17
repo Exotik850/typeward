@@ -1,5 +1,9 @@
 use typeward::prelude::*;
 
+fn ws_into_inner<T>(value: Ws<T>) -> T {
+    value.into_inner()
+}
+
 #[derive(Debug, PartialEq, Parse)]
 struct NamedPair {
     left: Ws<i64>,
@@ -50,6 +54,23 @@ struct DocStringsAndAttributes {
     /// Docstrings are allowed,
     /// as well as attributes like `#[allow(non_snake_case)]`.
     vAlue: Ws<i64>,
+}
+
+#[derive(Debug, PartialEq)]
+struct NonParseString(String);
+
+#[derive(Debug, PartialEq, Parse)]
+struct MappedFields {
+    #[parse(from(Ws<String>, |ws| NonParseString(ws.into_inner())))]
+    word: NonParseString,
+    #[parse(from(Ws<i64>, ws_into_inner))]
+    number: i64,
+}
+
+#[derive(Debug, PartialEq, Parse)]
+enum MappedValue {
+    Number(#[parse(from(Ws<i64>, |ws| ws.into_inner()))] i64),
+    Word(#[parse(from(Ws<String>, |ws| NonParseString(ws.into_inner())))] NonParseString),
 }
 
 #[test]
@@ -113,4 +134,20 @@ fn derive_parse_accepts_explicit_crate_attribute() {
 fn derive_parse_allows_docstrings_and_attributes() {
     let parsed = parse_complete::<DocStringsAndAttributes>("8").unwrap();
     assert_eq!(parsed.vAlue, 8);
+}
+
+#[test]
+fn derive_parse_field_from_attribute_supports_closure_and_function_mappers() {
+    let parsed = parse_complete::<MappedFields>("   hello  42").unwrap();
+    assert_eq!(parsed.word, NonParseString("hello".into()));
+    assert_eq!(parsed.number, 42);
+}
+
+#[test]
+fn derive_parse_field_from_attribute_works_for_enum_variants() {
+    let word = parse_complete::<MappedValue>("   alpha").unwrap();
+    assert!(matches!(word, MappedValue::Word(value) if value == NonParseString("alpha".into())));
+
+    let number = parse_complete::<MappedValue>("   11").unwrap();
+    assert!(matches!(number, MappedValue::Number(value) if value == 11));
 }
