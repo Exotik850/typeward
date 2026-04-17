@@ -7,4 +7,4 @@ edition = "2024"
 path = "./json.rs"
 
 [dependencies]
-typeward = { path = "../.." }
+typeward = { path = "../.." , version = "*", default-features = false }
