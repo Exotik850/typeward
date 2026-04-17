@@ -39,9 +39,12 @@ where
     A: Parse<'a, I>,
     B: Parse<'a, I>,
 {
-    fn parse(input: I) -> ParseResult<(Self, I)> {
-        let (left, remaining) = A::parse(input)?;
-        let (right, remaining) = B::parse(remaining)?;
+    fn parse_with_context(
+        input: I,
+        context: &mut crate::parse::ParseOffsetContext,
+    ) -> ParseResult<(Self, I)> {
+        let (left, remaining) = A::parse_with_context(input, context)?;
+        let (right, remaining) = B::parse_with_context(remaining, context)?;
         Ok((And { left, right }, remaining))
     }
 }

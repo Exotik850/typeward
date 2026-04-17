@@ -14,7 +14,10 @@ impl<'a, I> Parse<'a, I> for Rest<I>
 where
     I: Input<'a>,
 {
-    fn parse(value: I) -> crate::error::ParseResult<(Self, I)> {
+    fn parse_with_context(
+        value: I,
+        _context: &mut crate::parse::ParseOffsetContext,
+    ) -> crate::error::ParseResult<(Self, I)> {
         Ok((Rest { value }, I::empty()))
     }
 }
@@ -43,7 +46,10 @@ impl<'a, I> Parse<'a, I> for Eof
 where
     I: Input<'a>,
 {
-    fn parse(input: I) -> crate::error::ParseResult<(Self, I)> {
+    fn parse_with_context(
+        input: I,
+        _context: &mut crate::parse::ParseOffsetContext,
+    ) -> crate::error::ParseResult<(Self, I)> {
         if input.is_empty() {
             Ok((Eof, input))
         } else {
@@ -63,7 +69,10 @@ impl<'a, I> Parse<'a, I> for Fail
 where
     I: Input<'a>,
 {
-    fn parse(_: I) -> crate::error::ParseResult<(Self, I)> {
+    fn parse_with_context(
+        _: I,
+        _context: &mut crate::parse::ParseOffsetContext,
+    ) -> crate::error::ParseResult<(Self, I)> {
         Err(crate::error::custom("Expected Fail to always fail"))
     }
 }

@@ -7,7 +7,10 @@ impl<'a, I> Parse<'a, I> for &'a str
 where
     I: Input<'a>,
 {
-    fn parse(input: I) -> ParseResult<(Self, I)> {
+    fn parse_with_context(
+        input: I,
+        _context: &mut crate::parse::ParseOffsetContext,
+    ) -> ParseResult<(Self, I)> {
         if input.is_empty() {
             return Err(crate::error::ParseError::custom(
                 "expected string, found end of input",
@@ -30,8 +33,11 @@ impl<'a, I> Parse<'a, I> for String
 where
     I: Input<'a>,
 {
-    fn parse(input: I) -> ParseResult<(Self, I)> {
-        let (s, rest) = <&str>::parse(input)?;
+    fn parse_with_context(
+        input: I,
+        context: &mut crate::parse::ParseOffsetContext,
+    ) -> ParseResult<(Self, I)> {
+        let (s, rest) = <&str>::parse_with_context(input, context)?;
         Ok((s.to_string(), rest))
     }
 }
@@ -40,8 +46,11 @@ impl<'a, I> Parse<'a, I> for Cow<'a, str>
 where
     I: Input<'a>,
 {
-    fn parse(input: I) -> ParseResult<(Self, I)> {
-        let (result, rest) = <&str>::parse(input)?;
+    fn parse_with_context(
+        input: I,
+        context: &mut crate::parse::ParseOffsetContext,
+    ) -> ParseResult<(Self, I)> {
+        let (result, rest) = <&str>::parse_with_context(input, context)?;
         Ok((Cow::Borrowed(result), rest))
     }
 }
@@ -90,7 +99,10 @@ where
     T: Token,
     S: AsRef<str> + From<&'a str>,
 {
-    fn parse(input: I) -> ParseResult<(Self, I)> {
+    fn parse_with_context(
+        input: I,
+        _context: &mut crate::parse::ParseOffsetContext,
+    ) -> ParseResult<(Self, I)> {
         let (value, rest) = input.take_till(T::VALUE)?;
         Ok((
             Self {

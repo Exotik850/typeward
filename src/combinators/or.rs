@@ -109,11 +109,14 @@ where
     A: Parse<'a, I>,
     B: Parse<'a, I>,
 {
-    fn parse(input: I) -> ParseResult<(Self, I)> {
-        if let Ok((a, rest)) = A::parse(input) {
+    fn parse_with_context(
+        input: I,
+        context: &mut crate::parse::ParseOffsetContext,
+    ) -> ParseResult<(Self, I)> {
+        if let Ok((a, rest)) = A::parse_with_context(input, context) {
             Ok((Or::Left(a), rest))
         } else {
-            let (b, rest) = B::parse(input)?;
+            let (b, rest) = B::parse_with_context(input, context)?;
             Ok((Or::Right(b), rest))
         }
     }

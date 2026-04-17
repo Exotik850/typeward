@@ -10,8 +10,11 @@ where
     I: crate::input::Input<'a>,
     P: Parse<'a, I>,
 {
-    fn parse(input: I) -> ParseResult<(Self, I)> {
-        let (parser, _) = P::parse(input)?;
+    fn parse_with_context(
+        input: I,
+        context: &mut crate::parse::ParseOffsetContext,
+    ) -> ParseResult<(Self, I)> {
+        let (parser, _) = P::parse_with_context(input, context)?;
         Ok((Peek { parser }, input))
     }
 }

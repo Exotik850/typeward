@@ -10,9 +10,12 @@ where
     S: crate::parse::Parse<'a, I>,
     P: crate::parse::Parse<'a, I>,
 {
-    fn parse(input: I) -> crate::error::ParseResult<(Self, I)> {
-        let (value, rest) = S::parse(input)?;
-        if P::parse(input).is_ok() {
+    fn parse_with_context(
+        input: I,
+        context: &mut crate::parse::ParseOffsetContext,
+    ) -> crate::error::ParseResult<(Self, I)> {
+        let (value, rest) = S::parse_with_context(input, context)?;
+        if P::parse_with_context(input, context).is_ok() {
             Err(crate::error::custom(format!(
                 "Expected Not<{}, {}> to fail, but it succeeded",
                 std::any::type_name::<S>(),

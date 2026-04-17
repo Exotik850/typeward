@@ -84,8 +84,11 @@ type JsonParser = or!(
 );
 
 impl<'a> Parse<'a> for JsonValue {
-    fn parse(input: &'a str) -> ParseResult<(Self, &'a str)> {
-        let (parsed, rest) = JsonParser::parse(input)?;
+    fn parse_with_context(
+        input: &'a str,
+        context: &mut typeward::parse::ParseOffsetContext,
+    ) -> ParseResult<(Self, &'a str)> {
+        let (parsed, rest) = JsonParser::parse_with_context(input, context)?;
 
         let value = or_match!(
             parsed,

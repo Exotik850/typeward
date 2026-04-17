@@ -35,8 +35,11 @@ where
     I: crate::input::Input<'a>,
     T: Parse<'a, I>,
 {
-    fn parse(input: I) -> ParseResult<(Self, I)> {
-        let (value, rest) = T::parse(input.trim_start())?;
+    fn parse_with_context(
+        input: I,
+        context: &mut crate::parse::ParseOffsetContext,
+    ) -> ParseResult<(Self, I)> {
+        let (value, rest) = T::parse_with_context(input.trim_start(), context)?;
         Ok((Self(value), rest))
     }
 }
