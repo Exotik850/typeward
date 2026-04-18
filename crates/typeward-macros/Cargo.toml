@@ -5,7 +5,7 @@ edition = "2024"
 license = "MIT"
 description = "Procedural macros for the Typeward parser combinator library."
 repository = "https://github.com/Exotik850/typeward"
-keywords = ["macro", "typeward", "parser combinator", "rust"]
+keywords = ["macro", "typeward", "combinator", "rust"]
 
 [lib]
 proc-macro = true
@@ -16,4 +16,4 @@ quote = { version = "1.0", default-features = false }
 syn = { version = "2.0", features = ["full"] }
 
 [dev-dependencies]
-typeward = { path = "../..", version = "*", default-features = false }
+typeward = { path = "../..", version = "0.2", default-features = false }
