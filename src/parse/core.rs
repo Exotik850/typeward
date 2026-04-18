@@ -60,6 +60,7 @@ macro_rules! parse_collection {
                 let mut items = Self::new();
                 let mut input = input;
                 while let Ok((item, remaining)) = T::parse_with_context(input, context) {
+                    crate::collections::ensure_progress(input, remaining, stringify!($ty))?;
                     items.$push_fn(item);
                     input = remaining;
                 }
@@ -74,6 +75,7 @@ parse_collection!(std::collections::HashSet<T>, insert; std::hash::Hash, Eq);
 parse_collection!(std::collections::BTreeSet<T>, insert; Ord);
 parse_collection!(std::collections::VecDeque<T>, push_back);
 parse_collection!(std::collections::BinaryHeap<T>, push; Ord);
+parse_collection!(std::collections::LinkedList<T>, push_back);
 
 macro_rules! parse_wrapper {
     ($ty:ty $(; $($bound:ident),*)?) => {

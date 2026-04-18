@@ -1,51 +1,4 @@
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Many0<T> {
-    items: Vec<T>,
-}
-
-impl<T> Many0<T> {
-    #[must_use]
-    pub fn items(&self) -> &[T] {
-        &self.items
-    }
-
-    #[must_use]
-    pub fn into_items(self) -> Vec<T> {
-        self.items
-    }
-
-    #[must_use]
-    pub fn len(&self) -> usize {
-        self.items.len()
-    }
-
-    #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.items.is_empty()
-    }
-}
-
-impl<'a, I, T> crate::parse::Parse<'a, I> for Many0<T>
-where
-    I: crate::input::Input<'a>,
-    T: crate::parse::Parse<'a, I>,
-{
-    fn parse_with_context(
-        input: I,
-        context: &mut crate::parse::ParseOffsetContext,
-    ) -> crate::error::ParseResult<(Self, I)> {
-        let mut items = Vec::new();
-        let mut rest = input;
-
-        while let Ok((item, new_rest)) = T::parse_with_context(rest, context) {
-            crate::collections::ensure_progress(rest, new_rest, "Many0")?;
-            items.push(item);
-            rest = new_rest;
-        }
-
-        Ok((Many0 { items }, rest))
-    }
-}
+pub type Many0<T> = Vec<T>;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Many1<T> {
@@ -114,7 +67,7 @@ mod tests {
     #[test]
     fn many0_collects_until_failure() {
         let (result, rest) = Many0::<char>::parse("abc123").unwrap();
-        assert_eq!(result.items(), &['a', 'b', 'c', '1', '2', '3']);
+        assert_eq!(result, ['a', 'b', 'c', '1', '2', '3']);
         assert_eq!(rest, "");
     }
 
