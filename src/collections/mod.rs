@@ -24,5 +24,5 @@ where
 pub mod prelude {
     pub use super::collect::Collect;
     pub use super::many::{Many0, Many1};
-    pub use super::repeat::Repeat;
+    pub use super::repeat::{Repeat, RepeatUntil};
 }
