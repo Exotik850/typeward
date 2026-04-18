@@ -297,6 +297,43 @@ macro_rules! parse_pointer {
 parse_pointer!(std::rc::Rc<T>);
 parse_pointer!(std::sync::Arc<T>);
 
+macro_rules! parse_tuple {
+    ($($ty:ident),+) => {
+        impl<'a, I, $($ty),+> Parse<'a, I> for ($($ty),+)
+        where
+            I: Input<'a>,
+            $($ty: Parse<'a, I>),+
+        {
+            fn parse_with_context(
+                mut input: I,
+                context: &mut ParseOffsetContext,
+            ) -> ParseResult<(Self, I)> {
+                #[allow(non_snake_case)]
+                let ($($ty),+) = (
+                    $(
+                        {
+                            let (value, remaining) = $ty::parse_with_context(input, context)?;
+                            input = remaining;
+                            value
+                        }
+                    ),+
+                );
+                Ok((($($ty),+), input))
+            }
+        }
+    };
+}
+
+parse_tuple!(A, B);
+parse_tuple!(A, B, C);
+parse_tuple!(A, B, C, D);
+parse_tuple!(A, B, C, D, E);
+parse_tuple!(A, B, C, D, E, F);
+parse_tuple!(A, B, C, D, E, F, G);
+parse_tuple!(A, B, C, D, E, F, G, H);
+parse_tuple!(A, B, C, D, E, F, G, H, K);
+parse_tuple!(A, B, C, D, E, F, G, H, K, J);
+
 /// A wrapper type for nested parsing results,
 ///
 /// allows for parsers to return nested structures without losing the ability to implement `Parse` for the inner type.
@@ -542,6 +579,35 @@ mod tests {
             assert_eq!(spans[1], SourceSpan::new(2, 7));
             assert_eq!(spans[2], SourceSpan::new(3, 8));
         });
+    }
+
+    #[test]
+    fn test_option_parse_does_not_consume_input_on_failure() {
+        let input = "not a number";
+        let mut context = ParseOffsetContext::new();
+        let (result, remaining) = Option::<i64>::parse_with_context(input, &mut context).unwrap();
+        assert!(result.is_none());
+        assert_eq!(remaining, input);
+    }
+
+    #[test]
+    fn test_vec_parse_accumulates_all_successful_items() {
+        let input = "1 2 three 4";
+        let mut context = ParseOffsetContext::new();
+        let (result, remaining) = Vec::<i64>::parse_with_context(input, &mut context).unwrap();
+        assert_eq!(result, vec![1, 2]);
+        assert_eq!(remaining, " three 4");
+    }
+
+    #[test]
+    fn test_tuple_parse() {
+        let input = "42 hello";
+        let mut context = ParseOffsetContext::new();
+        let (result, remaining) =
+            <(i64, Ws<HelloParser>)>::parse_with_context(input, &mut context).unwrap();
+        assert_eq!(result.0, 42);
+        assert_eq!(result.1, HelloParser);
+        assert_eq!(remaining, "");
     }
 
     #[test]
