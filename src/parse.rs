@@ -294,8 +294,27 @@ macro_rules! parse_pointer {
     };
 }
 
-parse_pointer!(std::rc::Rc<T>; Clone);
-parse_pointer!(std::sync::Arc<T>; Clone);
+parse_pointer!(std::rc::Rc<T>);
+parse_pointer!(std::sync::Arc<T>);
+
+/// A wrapper type for nested parsing results,
+///
+/// allows for parsers to return nested structures without losing the ability to implement `Parse` for the inner type.
+/// This was chosen instead of a blanket impl over `Box<T: Parse>`
+/// since downstream users may want to implement `Parse` for `Box<T>` directly for some types, and this allows them to do so without conflicting with the blanket impl.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct Nested<T>(Box<T>);
+
+impl<'a, T, I> Parse<'a, I> for Nested<T>
+where
+    I: Input<'a>,
+    T: Parse<'a, I>,
+{
+    fn parse_with_context(input: I, context: &mut ParseOffsetContext) -> ParseResult<(Self, I)> {
+        let (value, remaining) = T::parse_with_context(input, context)?;
+        Ok((Nested(Box::new(value)), remaining))
+    }
+}
 
 /// Convenience function to parse complete input, ensuring everything is consumed.
 ///
@@ -523,5 +542,38 @@ mod tests {
             assert_eq!(spans[1], SourceSpan::new(2, 7));
             assert_eq!(spans[2], SourceSpan::new(3, 8));
         });
+    }
+
+    #[test]
+    fn test_nested_parses_recursive() {
+        struct Recursive {
+            value: Ws<i64>,
+            inner: Option<Nested<Recursive>>,
+        }
+
+        impl<'a, I> Parse<'a, I> for Recursive
+        where
+            I: Input<'a>,
+        {
+            fn parse_with_context(
+                input: I,
+                context: &mut ParseOffsetContext,
+            ) -> ParseResult<(Self, I)> {
+                let (value, remaining) = Ws::<i64>::parse_with_context(input, context)?;
+                let (inner, remaining) =
+                    Option::<Nested<Recursive>>::parse_with_context(remaining, context)?;
+                Ok((Recursive { value, inner }, remaining))
+            }
+        }
+
+        let input = "1 2 3";
+        let (parsed, remaining) = Recursive::parse(input).unwrap();
+        assert_eq!(parsed.value, 1);
+        let inner1 = parsed.inner.unwrap().0;
+        assert_eq!(inner1.value, 2);
+        let inner2 = inner1.inner.unwrap().0;
+        assert_eq!(inner2.value, 3);
+        assert!(inner2.inner.is_none());
+        assert!(remaining.trim().is_empty());
     }
 }
