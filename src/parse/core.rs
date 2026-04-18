@@ -179,10 +179,25 @@ impl<T> std::ops::Deref for Nested<T> {
         &self.0
     }
 }
-
 impl<T> std::ops::DerefMut for Nested<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
+    }
+}
+impl<T> PartialEq<T> for Nested<T>
+where
+    T: PartialEq,
+{
+    fn eq(&self, other: &T) -> bool {
+        self.0.as_ref() == other
+    }
+}
+impl<T> PartialOrd<T> for Nested<T>
+where
+    T: PartialOrd,
+{
+    fn partial_cmp(&self, other: &T) -> Option<std::cmp::Ordering> {
+        self.0.as_ref().partial_cmp(other)
     }
 }
 
