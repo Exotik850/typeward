@@ -113,11 +113,12 @@ where
         input: I,
         context: &mut crate::parse::ParseOffsetContext,
     ) -> ParseResult<(Self, I)> {
-        if let Ok((a, rest)) = A::parse_with_context(input, context) {
-            Ok((Or::Left(a), rest))
-        } else {
-            let (b, rest) = B::parse_with_context(input, context)?;
-            Ok((Or::Right(b), rest))
+        match A::parse_with_context(input, context) {
+            Ok((a, rest)) => Ok((Or::Left(a), rest)),
+            Err(left_err) => match B::parse_with_context(input, context) {
+                Ok((b, rest)) => Ok((Or::Right(b), rest)),
+                Err(right_err) => Err(left_err.farthest(right_err)),
+            },
         }
     }
 }
@@ -155,6 +156,9 @@ pub type Alt<A, B> = Or<A, B>;
 
 #[cfg(test)]
 mod tests {
+    use crate::combinators::ws::Ws;
+    use crate::literals::{KwFalse, KwNull, KwTrue};
+    use crate::parse::parse_complete;
     use crate::primitives::prelude::*;
 
     use super::*;
@@ -233,5 +237,60 @@ mod tests {
         );
 
         assert_eq!(rendered, "alpha:hello");
+    }
+
+    #[test]
+    fn test_alt_error_prefers_farthest_span() {
+        type AltType = or!(
+            crate::and!(i64, Ws<KwNull>),
+            crate::and!(i64, Ws<KwTrue>, Ws<KwNull>)
+        );
+        let err = parse_complete::<AltType>("42 true nope").unwrap_err();
+
+        assert_eq!(err.span(), Some(crate::error::SourceSpan::point(8)));
+    }
+
+    #[test]
+    fn test_alt_error_tie_prefers_last_alternative() {
+        type AltType = or!(KwTrue, KwFalse);
+        let err = parse_complete::<AltType>("maybe").unwrap_err();
+
+        assert!(matches!(
+            err.root_cause(),
+            crate::error::ParseError::UnexpectedToken {
+                expected: "false",
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn test_alt_error_prefers_spanned_over_unspanned() {
+        type AltType = or!(i64, KwNull);
+        let err = parse_complete::<AltType>("abc").unwrap_err();
+
+        assert_eq!(err.span(), Some(crate::error::SourceSpan::point(0)));
+        assert!(matches!(
+            err.root_cause(),
+            crate::error::ParseError::UnexpectedToken {
+                expected: "null",
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn test_alt_error_keeps_first_when_second_is_unspanned() {
+        type AltType = or!(KwNull, i64);
+        let err = parse_complete::<AltType>("abc").unwrap_err();
+
+        assert_eq!(err.span(), Some(crate::error::SourceSpan::point(0)));
+        assert!(matches!(
+            err.root_cause(),
+            crate::error::ParseError::UnexpectedToken {
+                expected: "null",
+                ..
+            }
+        ));
     }
 }

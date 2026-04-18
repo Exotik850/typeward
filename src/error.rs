@@ -180,6 +180,35 @@ impl ParseError {
         }
     }
 
+    /// Chooses whichever error occurred farther in the input.
+    ///
+    /// Preference order:
+    /// - Larger span start offset
+    /// - If starts tie, larger span end offset
+    /// - If spans are identical or both missing, `other` (last-alternative semantics)
+    /// - If only one error has a span, that error is preferred
+    #[must_use]
+    pub fn farthest(self, other: ParseError) -> ParseError {
+        match (self.span(), other.span()) {
+            (Some(left), Some(right)) => {
+                if right.start > left.start {
+                    other
+                } else if right.start < left.start {
+                    self
+                } else if right.end > left.end {
+                    other
+                } else if right.end < left.end {
+                    self
+                } else {
+                    other
+                }
+            }
+            (Some(_), None) => self,
+            (None, Some(_)) => other,
+            (None, None) => other,
+        }
+    }
+
     /// Returns the innermost non-wrapper error.
     #[must_use]
     pub fn root_cause(&self) -> &ParseError {
@@ -235,6 +264,30 @@ mod tests {
         let err = ParseError::UnexpectedEOF.with_span(SourceSpan::point(10));
         assert_eq!(err.span(), Some(SourceSpan::point(10)));
         assert_eq!(err.root_cause(), &ParseError::UnexpectedEOF);
+    }
+
+    #[test]
+    fn test_error_farthest_prefers_later_span() {
+        let left = ParseError::custom("left").with_span(SourceSpan::point(3));
+        let right = ParseError::custom("right").with_span(SourceSpan::point(7));
+
+        assert_eq!(left.farthest(right.clone()), right);
+    }
+
+    #[test]
+    fn test_error_farthest_prefers_spanned_error() {
+        let left = ParseError::custom("left").with_span(SourceSpan::point(3));
+        let right = ParseError::custom("right");
+
+        assert_eq!(left.clone().farthest(right), left);
+    }
+
+    #[test]
+    fn test_error_farthest_prefers_other_on_tie() {
+        let left = ParseError::custom("left").with_span(SourceSpan::new(3, 5));
+        let right = ParseError::custom("right").with_span(SourceSpan::new(3, 5));
+
+        assert_eq!(left.farthest(right.clone()), right);
     }
 
     #[test]
