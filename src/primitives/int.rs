@@ -80,6 +80,46 @@ macro_rules! parse_signed {
 
 parse_signed!(i8, i16, i32, i64, i128, isize);
 
+macro_rules! parse_nonzero {
+    ($($wrapper:ident => $inner:ty),* $(,)?) => {
+        $(
+            impl<'a, I> Parse<'a, I> for std::num::$wrapper
+            where
+                I: Input<'a>,
+            {
+                fn parse_with_context(
+                    input: I,
+                    context: &mut crate::parse::ParseOffsetContext,
+                ) -> ParseResult<(Self, I)> {
+                    let (value, rest) = <$inner>::parse_with_context(input, context)?;
+                    match std::num::$wrapper::new(value) {
+                        Some(value) => Ok((value, rest)),
+                        None => Err(crate::error::ParseError::custom(format!(
+                            "expected non-zero {}, found 0",
+                            stringify!($wrapper)
+                        ))),
+                    }
+                }
+            }
+        )*
+    };
+}
+
+parse_nonzero!(
+    NonZeroU8 => u8,
+    NonZeroU16 => u16,
+    NonZeroU32 => u32,
+    NonZeroU64 => u64,
+    NonZeroU128 => u128,
+    NonZeroUsize => usize,
+    NonZeroI8 => i8,
+    NonZeroI16 => i16,
+    NonZeroI32 => i32,
+    NonZeroI64 => i64,
+    NonZeroI128 => i128,
+    NonZeroIsize => isize,
+);
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -113,5 +153,31 @@ mod tests {
         let (num, rest) = i64::parse(input).unwrap();
         assert_eq!(num, 123);
         assert_eq!(rest, b" rest");
+    }
+
+    #[test]
+    fn test_nonzero_u32_parse() {
+        let input = "42 rest";
+        let (num, rest) = std::num::NonZeroU32::parse(input).unwrap();
+        assert_eq!(num.get(), 42);
+        assert_eq!(rest, " rest");
+    }
+
+    #[test]
+    fn test_nonzero_i64_parse() {
+        let input = "-7 rest";
+        let (num, rest) = std::num::NonZeroI64::parse(input).unwrap();
+        assert_eq!(num.get(), -7);
+        assert_eq!(rest, " rest");
+    }
+
+    #[test]
+    fn test_nonzero_u32_parse_rejects_zero() {
+        let input = "0 rest";
+        let err = std::num::NonZeroU32::parse(input).unwrap_err();
+        assert_eq!(
+            err,
+            crate::error::ParseError::custom("expected non-zero NonZeroU32, found 0")
+        );
     }
 }

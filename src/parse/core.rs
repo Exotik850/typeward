@@ -77,21 +77,26 @@ parse_collection!(std::collections::VecDeque<T>, push_back);
 parse_collection!(std::collections::BinaryHeap<T>, push; Ord);
 parse_collection!(std::collections::LinkedList<T>, push_back);
 
+macro_rules! parse_wrapper_ctor {
+  ($ty:ty, $ctor:path $(; $($bound:ident),*)?) => {
+    impl<'a, T, I> Parse<'a, I> for $ty
+    where
+        I: Input<'a>,
+        T: Parse<'a, I> $($(+ $bound)*)?,
+    {
+      fn parse_with_context(
+          input: I,
+          context: &mut ParseOffsetContext,
+      ) -> ParseResult<(Self, I)> {
+          let (value, remaining) = T::parse_with_context(input, context)?;
+          Ok(($ctor(value), remaining))
+      }
+    }
+  };
+}
 macro_rules! parse_wrapper {
     ($ty:ty $(; $($bound:ident),*)?) => {
-        impl<'a, T, I> Parse<'a, I> for $ty
-        where
-            I: Input<'a>,
-            T: Parse<'a, I> $($(+ $bound)*)?,
-        {
-            fn parse_with_context(
-                input: I,
-                context: &mut ParseOffsetContext,
-            ) -> ParseResult<(Self, I)> {
-                let (value, remaining) = T::parse_with_context(input, context)?;
-                Ok((Self::from(value), remaining))
-            }
-        }
+        parse_wrapper_ctor!($ty, Self::from; $($($bound),*)?);
     };
 }
 
@@ -103,6 +108,8 @@ parse_wrapper!(std::cell::OnceCell<T>);
 parse_wrapper!(std::sync::Mutex<T>);
 parse_wrapper!(std::sync::RwLock<T>);
 parse_wrapper!(std::sync::OnceLock<T>);
+parse_wrapper_ctor!(std::num::Wrapping<T>, std::num::Wrapping);
+parse_wrapper_ctor!(std::num::Saturating<T>, std::num::Saturating);
 
 macro_rules! parse_tuple {
     ($($ty:ident),+) => {
@@ -257,6 +264,22 @@ mod tests {
         assert_eq!(result.0, 42);
         assert_eq!(result.1, HelloParser);
         assert_eq!(remaining, "");
+    }
+
+    #[test]
+    fn test_wrapping_parse() {
+        let input = "42 rest";
+        let (value, remaining) = std::num::Wrapping::<i64>::parse(input).unwrap();
+        assert_eq!(value.0, 42);
+        assert_eq!(remaining, " rest");
+    }
+
+    #[test]
+    fn test_saturating_parse() {
+        let input = "255 rest";
+        let (value, remaining) = std::num::Saturating::<u8>::parse(input).unwrap();
+        assert_eq!(value.0, 255);
+        assert_eq!(remaining, " rest");
     }
 
     #[test]

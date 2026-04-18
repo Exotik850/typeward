@@ -1,9 +1,5 @@
 use super::{
-    Parse,
-    ParseOffsetContext,
-    ParseOffsetInput,
-    current_parse_offset,
-    with_parse_offset_scope,
+    Parse, ParseOffsetContext, ParseOffsetInput, current_parse_offset, with_parse_offset_scope,
 };
 use crate::error::{ParseError, ParseResult};
 use crate::prelude::Span;

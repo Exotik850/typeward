@@ -118,22 +118,6 @@ macro_rules! parse_filtered {
 
 parse_filtered!(Positive, |n| n > 0, i8, i16, i32, i64, i128, isize);
 parse_filtered!(Negative, |n| n < 0, i8, i16, i32, i64, i128, isize);
-parse_filtered!(
-    NonZero,
-    |n| n != 0,
-    i8,
-    i16,
-    i32,
-    i64,
-    i128,
-    isize,
-    u8,
-    u16,
-    u32,
-    u64,
-    u128,
-    usize
-);
 parse_filtered!(NonNegative, |n| n >= 0, i8, i16, i32, i64, i128, isize);
 parse_filtered!(NonPositive, |n| n <= 0, i8, i16, i32, i64, i128, isize);
 parse_filtered!(NonZeroFloat, |n| n != 0.0, f32, f64);
