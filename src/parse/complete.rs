@@ -59,9 +59,10 @@ mod tests {
     use super::*;
     use crate::combinators::{span::Span, ws::Ws};
     use crate::error::SourceSpan;
-    use crate::input::TokenStream;
+    use crate::input::{ReadInputBuf, TokenStream};
     use crate::lit_token;
     use crate::literals::KwNull;
+    use std::io::Cursor;
 
     lit_token!(HelloParser, "hello");
 
@@ -134,6 +135,24 @@ mod tests {
             .err()
             .expect("expected trailing token input error");
         assert_eq!(err.span(), Some(SourceSpan::new(1, 2)));
+    }
+
+    #[test]
+    fn test_parse_complete_input_read_input() {
+        let input = ReadInputBuf::from_read(Cursor::new(b"hello"))
+            .expect("reading from cursor should not fail");
+        let result = parse_complete_input::<_, HelloParser>(input.as_input()).unwrap();
+        let _ = result;
+    }
+
+    #[test]
+    fn test_parse_complete_input_trailing_read_input_reports_byte_span() {
+        let input = ReadInputBuf::from_read(Cursor::new("hello\u{00E9}".as_bytes()))
+            .expect("reading from cursor should not fail");
+        let err = parse_complete_input::<_, HelloParser>(input.as_input())
+            .err()
+            .expect("expected trailing read input error");
+        assert_eq!(err.span(), Some(SourceSpan::new(5, 7)));
     }
 
     #[test]

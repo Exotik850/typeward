@@ -41,7 +41,7 @@ pub mod prelude {
     pub use crate::collections::prelude::*;
     pub use crate::combinators::prelude::*;
     pub use crate::error::{ParseError, ParseResult, SourceSpan};
-    pub use crate::input::{Input, TokenStream};
+    pub use crate::input::{Input, ReadInput, ReadInputBuf, TokenStream};
     pub use crate::literals::*;
     pub use crate::parse::{
         Parse, ParseOffsetContext, ParseOffsetInput, parse_complete, parse_complete_input,

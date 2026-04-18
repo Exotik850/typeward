@@ -12,7 +12,7 @@ typeward is designed as a lightweight alternative to `syn` for general-purpose p
 
 - **Type-level parser composition** — parsers are types, composed via generics rather than runtime closures
 - **Derive macro** — `#[derive(Parse)]` generates parser implementations for structs, enums, and unions
-- **Multiple input types** — works with `&str`, `&[u8]`, and `TokenStream` through a unified `Input` trait
+- **Multiple input types** — works with `&str`, `&[u8]`, read-backed `ReadInput`, and `TokenStream` through a unified `Input` trait
 - **Span support** — track source locations with `SourceSpan` for error reporting
 - **Zero global state** — thread-safe parse context passed explicitly through parse calls
 
@@ -106,7 +106,7 @@ Field-level attributes like `#[parse(ws)]` and `#[parse(from(ParserType, mapper)
 | [`primitives`] | `Parse` implementations for built-in types (`bool`, `f64`, `i64`, `String`, etc.) |
 | [`combinators`] | Parser combinators — `And`, `Or`, `Delimited`, `Separated`, `Ws`, `Span`, `Peek`, `Not` |
 | [`collections`] | Repetition combinators — `Many0`, `Many1`, `Repeat` |
-| [`input`] | Input abstraction — `&str`, `&[u8]`, `TokenStream` via the `Input` trait |
+| [`input`] | Input abstraction — `&str`, `&[u8]`, `ReadInput`, `TokenStream` via the `Input` trait |
 | [`error`] | Error types — `ParseError`, `ParseResult`, `SourceSpan` |
 | [`parse`] | Core `Parse` trait and entry points like `parse_complete` |
 

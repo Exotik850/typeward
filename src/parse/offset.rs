@@ -1,10 +1,10 @@
-use crate::input::{Input, TokenStream};
+use crate::input::{Input, ReadInput, TokenStream};
 use std::{cmp::Reverse, mem};
 
 /// Domain for offset tracking units.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ParseOffsetDomain {
-    /// Byte offsets (`&str`, `&[u8]`).
+    /// Byte offsets (`&str`, `&[u8]`, [`ReadInput`]).
     Bytes,
     /// Element offsets (`TokenStream`).
     Tokens,
@@ -160,6 +160,33 @@ impl<'a> ParseOffsetInput<'a> for &'a [u8] {
 
         let current_start = self.as_ptr() as usize;
         let current_end = current_start.saturating_add(self.len());
+        let root_end = root.start.saturating_add(root.len);
+
+        if current_start < root.start || current_end > root_end {
+            return None;
+        }
+
+        Some(current_start.saturating_sub(root.start))
+    }
+}
+
+impl<'a> ParseOffsetInput<'a> for ReadInput<'a> {
+    fn parse_offset_anchor(self) -> ParseOffsetAnchor {
+        ParseOffsetAnchor::new(
+            ParseOffsetDomain::Bytes,
+            self.as_bytes().as_ptr() as usize,
+            self.as_bytes().len(),
+            1,
+        )
+    }
+
+    fn parse_offset_from(self, root: ParseOffsetAnchor) -> Option<usize> {
+        if root.domain != ParseOffsetDomain::Bytes || root.unit_size != 1 {
+            return None;
+        }
+
+        let current_start = self.as_bytes().as_ptr() as usize;
+        let current_end = current_start.saturating_add(self.as_bytes().len());
         let root_end = root.start.saturating_add(root.len);
 
         if current_start < root.start || current_end > root_end {

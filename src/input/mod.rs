@@ -1,10 +1,12 @@
 mod bytes_input;
+mod read_input;
 mod shared;
 mod str_input;
 mod token_stream;
 
 use std::borrow::Cow;
 
+pub use read_input::{ReadInput, ReadInputBuf};
 pub use token_stream::TokenStream;
 
 use crate::error::ParseResult;
@@ -15,6 +17,7 @@ use stable_pattern::Pattern;
 /// This trait is implemented for common borrowed input forms:
 /// - `&str`
 /// - `&[u8]` (UTF-8)
+/// - [`ReadInput`] for read-backed byte buffers
 /// - [`TokenStream`] for token sequences where `T: AsRef<str>`
 pub trait Input<'a>: Copy + Sized {
     /// Returns the number of remaining units in the input.
