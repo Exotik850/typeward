@@ -1,6 +1,6 @@
 [package]
 name = "typeward"
-version = "0.2.3"
+version = "0.2.4"
 edition = "2024"
 license = "MIT"
 description = "A type-driven parser combinator library for Rust."
