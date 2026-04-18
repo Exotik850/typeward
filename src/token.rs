@@ -1,6 +1,5 @@
 use crate::{
     error::{ParseError, SourceSpan},
-    input::Input,
     parse::{Parse, ParseOffsetContext, ParseOffsetInput, current_parse_offset},
 };
 
@@ -85,7 +84,7 @@ where
 #[cfg(feature = "arrays")]
 impl<'a, I, T, const N: usize> Parse<'a, I> for [T; N]
 where
-    I: Input<'a>,
+    I: crate::input::Input<'a>,
     T: Parse<'a, I>,
 {
     fn parse_with_context(
