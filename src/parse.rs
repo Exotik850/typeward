@@ -1,6 +1,7 @@
 use crate::error::{ParseError, ParseResult};
 use crate::input::{Input, TokenStream};
 use crate::prelude::Span;
+use std::borrow::Cow;
 use std::{cmp::Reverse, mem};
 
 /// Domain for offset tracking units.
@@ -333,6 +334,18 @@ parse_tuple!(A, B, C, D, E, F, G);
 parse_tuple!(A, B, C, D, E, F, G, H);
 parse_tuple!(A, B, C, D, E, F, G, H, K);
 parse_tuple!(A, B, C, D, E, F, G, H, K, J);
+
+impl<'a, I, T> Parse<'a, I> for Cow<'a, T>
+where
+    I: Input<'a>,
+    T: ToOwned + ?Sized + 'a,
+    &'a T: Parse<'a, I>,
+{
+    fn parse_with_context(input: I, context: &mut ParseOffsetContext) -> ParseResult<(Self, I)> {
+        let (value, remaining) = <&'a T>::parse_with_context(input, context)?;
+        Ok((Cow::Borrowed(value), remaining))
+    }
+}
 
 /// A wrapper type for nested parsing results,
 ///

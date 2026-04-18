@@ -42,19 +42,6 @@ where
     }
 }
 
-impl<'a, I> Parse<'a, I> for Cow<'a, str>
-where
-    I: Input<'a>,
-{
-    fn parse_with_context(
-        input: I,
-        context: &mut crate::parse::ParseOffsetContext,
-    ) -> ParseResult<(Self, I)> {
-        let (result, rest) = <&str>::parse_with_context(input, context)?;
-        Ok((Cow::Borrowed(result), rest))
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct TakeTillToken<T, S = String>
 where
