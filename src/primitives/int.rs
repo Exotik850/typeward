@@ -1,4 +1,8 @@
-use crate::{error::ParseResult, input::Input, parse::Parse};
+use crate::{
+    error::{ParseError, ParseResult},
+    input::Input,
+    parse::{Parse, ParseOffsetContext},
+};
 
 macro_rules! parse_unsigned {
     ($($ty:ty),*) => {
@@ -10,11 +14,11 @@ macro_rules! parse_unsigned {
                 #[inline]
                 fn parse_with_context(
                     input: I,
-                    _context: &mut crate::parse::ParseOffsetContext,
+                    _context: &mut ParseOffsetContext,
                 ) -> ParseResult<(Self, I)> {
                     let (result, rest) = input.take_while(|c: char| c.is_ascii_digit())?;
                     if result.is_empty() {
-                        return Err(crate::error::ParseError::custom(concat!(
+                        return Err(ParseError::custom(concat!(
                             "expected ",
                             stringify!($ty)
                         )));
@@ -22,8 +26,8 @@ macro_rules! parse_unsigned {
 
                     match result.parse::<$ty>() {
                         Ok(num) => Ok((num, rest)),
-                        Err(_) => Err(crate::error::ParseError::custom(concat!(
-                            "expected ",
+                        Err(_) => Err(ParseError::custom(concat!(
+                            "value out of range for ",
                             stringify!($ty)
                         ))),
                     }
@@ -46,9 +50,8 @@ macro_rules! parse_signed {
                 #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap, clippy::cast_sign_loss)]
                 fn parse_with_context(
                     input: I,
-                    _context: &mut crate::parse::ParseOffsetContext,
+                    _context: &mut ParseOffsetContext,
                 ) -> ParseResult<(Self, I)> {
-                    let input = input.trim_start();
                     let (negative, sign_trimmed) = if let Some(rest) = input.strip_prefix("-")? {
                         (true, rest)
                     } else if let Some(rest) = input.strip_prefix("+")? {
@@ -59,17 +62,17 @@ macro_rules! parse_signed {
 
                     let (result, rest) = sign_trimmed.take_while(|c: char| c.is_ascii_digit())?;
                     if result.is_empty() {
-                        return Err(crate::error::ParseError::custom(concat!(
+                        return Err(ParseError::custom(concat!(
                             "expected ",
                             stringify!($ty)
                         )));
                     }
 
                     let Ok(magnitude) = result.parse::<u128>() else {
-                        return Err(crate::error::ParseError::custom(concat!(
-                            "expected ",
+                        return Err(ParseError::custom(concat!(
+                            "value out of range for ",
                             stringify!($ty)
-                            )));
+                        )));
                     };
 
                     let max = <$ty>::MAX as u128;
@@ -79,16 +82,16 @@ macro_rules! parse_signed {
                         } else if magnitude <= max {
                             -(magnitude as $ty)
                         } else {
-                            return Err(crate::error::ParseError::custom(concat!(
-                                "expected ",
+                            return Err(ParseError::custom(concat!(
+                                "value out of range for ",
                                 stringify!($ty)
                             )));
                         }
                     } else if magnitude <= max {
                         magnitude as $ty
                     } else {
-                        return Err(crate::error::ParseError::custom(concat!(
-                            "expected ",
+                        return Err(ParseError::custom(concat!(
+                            "value out of range for ",
                             stringify!($ty)
                         )));
                     };

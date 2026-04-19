@@ -60,14 +60,18 @@ where
                 input.display().as_ref(),
                 crate::error::DEFAULT_INPUT_PREVIEW,
             );
-            Err(crate::error::custom(format!(
-                "Expected end of input, but found '{preview}'"
+            Err(crate::error::ParseError::custom(format!(
+                "expected end of input, but found '{preview}'"
             )))
         }
     }
 }
 
 /// A parser that always fails.
+///
+/// Useful as a sentinel in generic combinators (e.g. as the `B` branch of
+/// `Or<A, B>` to forbid a second alternative) or to seed a [`crate::combinators::or::Or`]
+/// chain that is later extended.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Fail;
 
@@ -80,7 +84,7 @@ where
         _: I,
         _context: &mut crate::parse::ParseOffsetContext,
     ) -> crate::error::ParseResult<(Self, I)> {
-        Err(crate::error::custom("Expected Fail to always fail"))
+        Err(crate::error::ParseError::custom("`Fail` always fails"))
     }
 }
 

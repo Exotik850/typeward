@@ -56,14 +56,8 @@ where
             Ok((Self::default(), remaining))
         } else {
             let found = input.display();
-            Err(ParseError::UnexpectedToken {
-                expected: Self::VALUE,
-                found: crate::error::preview_input(
-                    found.as_ref(),
-                    crate::error::DEFAULT_INPUT_PREVIEW,
-                ),
-            }
-            .with_span(SourceSpan::point(current_parse_offset(context, input))))
+            Err(ParseError::unexpected_token(Self::VALUE, found.as_ref())
+                .with_span(SourceSpan::point(current_parse_offset(context, input))))
         }
     }
 }
