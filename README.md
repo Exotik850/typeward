@@ -12,7 +12,7 @@ typeward is designed as a lightweight alternative to `syn` for general-purpose p
 
 - **Type-level parser composition** — parsers are types, composed via generics rather than runtime closures
 - **Derive macro** — `#[derive(Parse)]` generates parser implementations for structs, enums, and unions
-- **Multiple input types** — works with `&str`, `&[u8]`, and read-backed `ReadInput` through a unified `Input` trait
+- **Borrowed + streaming-friendly input model** — parse borrowed values from `BorrowInput` types (`&str`, `&[u8]`, `ReadInput`) or parse owned values from any `Input` implementation, including streaming inputs
 - **Span support** — track source locations with `SourceSpan` for error reporting
 - **Zero global state** — thread-safe parse context passed explicitly through parse calls
 
@@ -39,6 +39,13 @@ Import the prelude to get access to core traits, combinators, primitives, and th
 ```rust
 use typeward::prelude::*;
 ```
+
+### Borrowed vs Owned Parse Outputs
+
+- `BorrowInput` enables borrowed parse outputs like `&str`.
+- Plain `Input` supports owned parse outputs like `String`.
+- Built-in buffered inputs (`&str`, `&[u8]`, `ReadInput`) implement both traits.
+- Streaming inputs can implement `Input` only, which naturally restricts parsing to owned output types.
 
 ## Building Parsers with Types
 
@@ -113,7 +120,7 @@ Field-level attributes like `#[parse(ws)]` and `#[parse(from(ParserType, mapper)
 | [`primitives`] | `Parse` implementations for built-in types (`bool`, `f64`, `i64`, `String`, etc.) |
 | [`combinators`] | Parser combinators — `And`, `Or`, `Delimited`, `Separated`, `Ws`, `Span`, `Peek`, `Not` |
 | [`collections`] | Repetition combinators — `Many0`, `Many1`, `Repeat` |
-| [`input`] | Input abstraction — `&str`, `&[u8]`, `ReadInput` via the `Input` trait |
+| [`input`] | Input abstraction via `Input` + `BorrowInput` for owned vs borrowed parse outputs |
 | [`error`] | Error types — `ParseError`, `ParseResult`, `SourceSpan` |
 | [`parse`] | Core `Parse` trait and entry points like `parse_complete` |
 

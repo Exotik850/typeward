@@ -1,6 +1,6 @@
 use super::ParseOffsetContext;
 use crate::error::{ParseError, ParseResult};
-use crate::input::Input;
+use crate::input::{BorrowInput, Input};
 use std::borrow::Cow;
 use std::marker::PhantomData;
 
@@ -169,7 +169,7 @@ parse_tuple!(A, B, C, D, E, F, G, H, K, J);
 
 impl<'a, I, T> Parse<'a, I> for Cow<'a, T>
 where
-    I: Input<'a>,
+    I: BorrowInput<'a>,
     T: ToOwned + ?Sized + 'a,
     &'a T: Parse<'a, I>,
 {

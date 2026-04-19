@@ -1,7 +1,7 @@
 //! **typeward** — A parser combinator library that builds parsers by combining
 //! smaller parsers within the type system.
 //!
-//! This crate is an alternative to `bon` for creating structs that can be parsed
+//! This crate is an alternative to `nom` for creating structs that can be parsed
 //! by composing type-level parsers. Define tokens as types, implement `Parse` for
 //! your structs, and combine them using generic combinators like [`Delimited`].
 //!
@@ -41,7 +41,10 @@ pub mod prelude {
     pub use crate::collections::prelude::*;
     pub use crate::combinators::prelude::*;
     pub use crate::error::{ParseError, ParseResult, SourceSpan};
-    pub use crate::input::{Input, ReadInput, ReadInputBuf};
+    pub use crate::input::{
+        BorrowInput, FromInputStr, Input, ReadInput, ReadInputBuf, ReadInputStream,
+        ReadInputStreamInput,
+    };
     pub use crate::literals::*;
     pub use crate::parse::{
         Parse, ParseOffsetContext, ParseOffsetInput, parse_complete, parse_complete_input,

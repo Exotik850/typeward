@@ -1,18 +1,26 @@
 mod bytes_input;
-mod read_input;
+mod read_input_buf;
+mod read_input_stream;
 mod shared;
 mod str_input;
 
 use std::borrow::Cow;
 
-pub use read_input::{ReadInput, ReadInputBuf};
+pub use read_input_buf::{ReadInput, ReadInputBuf};
+pub use read_input_stream::{ReadInputStream, ReadInputStreamInput};
 
-use crate::error::ParseResult;
+use crate::error::{ParseError, ParseResult};
 use stable_pattern::Pattern;
 
 /// Abstract parser input that supports consuming textual prefixes.
 ///
-/// This trait is implemented for common borrowed input forms:
+/// This trait is implemented for both borrowed and streaming input forms.
+///
+/// Implementations may return owned text fragments from `take_while` and
+/// `take_till` when borrowed slices are not stable (for example, streaming
+/// inputs backed by reusable buffers).
+///
+/// Built-in implementations exist for common borrowed input forms:
 /// - `&str`
 /// - `&[u8]` (UTF-8)
 /// - [`ReadInput`] for read-backed byte buffers
@@ -46,18 +54,77 @@ pub trait Input<'a>: Copy + Sized {
     /// Consumes a maximal prefix matching `predicate`.
     ///
     /// Returns the matched prefix and remaining input. The matched prefix may be
-    /// empty when no leading characters satisfy the predicate.
-    fn take_while<P>(self, predicate: P) -> ParseResult<(&'a str, Self)>
+    /// borrowed or owned depending on the input implementation.
+    fn take_while<P>(self, predicate: P) -> ParseResult<(Cow<'a, str>, Self)>
     where
-        P: Pattern<'a> + Copy;
+        P: for<'b> Pattern<'b> + Copy;
 
     /// Consumes a prefix until `predicate` matches.
     ///
     /// Returns the consumed prefix and remaining input. The consumed prefix may be
-    /// empty when the predicate matches at the start of the input.
-    fn take_till<P>(self, predicate: P) -> ParseResult<(&'a str, Self)>
+    /// borrowed or owned depending on the input implementation.
+    fn take_till<P>(self, predicate: P) -> ParseResult<(Cow<'a, str>, Self)>
     where
-        P: Pattern<'a> + Copy;
+        P: for<'b> Pattern<'b> + Copy;
+}
+
+/// Marker trait for inputs whose matched text can be borrowed from the source.
+///
+/// Parsers that yield borrowed values (for example `&'a str`) should require
+/// this trait instead of plain [`Input`].
+pub trait BorrowInput<'a>: Input<'a> {
+    /// Consumes a maximal prefix matching `predicate` and returns a borrowed match.
+    fn take_while_borrowed<P>(self, predicate: P) -> ParseResult<(&'a str, Self)>
+    where
+        P: for<'b> Pattern<'b> + Copy;
+
+    /// Consumes a prefix until `predicate` matches and returns a borrowed match.
+    fn take_till_borrowed<P>(self, predicate: P) -> ParseResult<(&'a str, Self)>
+    where
+        P: for<'b> Pattern<'b> + Copy;
+}
+
+/// Converts a textual fragment produced by an [`Input`] into a parser output type.
+///
+/// This enables a single parser implementation to support both borrowed outputs
+/// on [`BorrowInput`] and owned outputs on streaming-friendly [`Input`] types.
+pub trait FromInputStr<'a, I>: AsRef<str> + Sized
+where
+    I: Input<'a>,
+{
+    fn from_input_str(value: Cow<'a, str>) -> ParseResult<Self>;
+}
+
+impl<'a, I> FromInputStr<'a, I> for String
+where
+    I: Input<'a>,
+{
+    fn from_input_str(value: Cow<'a, str>) -> ParseResult<Self> {
+        Ok(value.into_owned())
+    }
+}
+
+impl<'a, I> FromInputStr<'a, I> for Cow<'a, str>
+where
+    I: Input<'a>,
+{
+    fn from_input_str(value: Cow<'a, str>) -> ParseResult<Self> {
+        Ok(value)
+    }
+}
+
+impl<'a, I> FromInputStr<'a, I> for &'a str
+where
+    I: BorrowInput<'a>,
+{
+    fn from_input_str(value: Cow<'a, str>) -> ParseResult<Self> {
+        match value {
+            Cow::Borrowed(value) => Ok(value),
+            Cow::Owned(_) => Err(ParseError::custom(
+                "borrowed output requires borrow-capable input",
+            )),
+        }
+    }
 }
 
 #[cfg(test)]

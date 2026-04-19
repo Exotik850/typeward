@@ -20,9 +20,9 @@ pub(super) fn checked_consumed_len(
     Ok(input_len - end_len)
 }
 
-pub(super) fn take_while_prefix_len<'a, P>(input: &'a str, predicate: P) -> usize
+pub(super) fn take_while_prefix_len<P>(input: &str, predicate: P) -> usize
 where
-    P: Pattern<'a> + Copy,
+    P: for<'a> Pattern<'a> + Copy,
 {
     let mut idx = 0;
     while let Some(rest) = predicate.strip_prefix_of(&input[idx..]) {
@@ -33,7 +33,7 @@ where
 
 pub(super) fn split_take_till<'a, P>(input: &'a str, predicate: P) -> (&'a str, &'a str)
 where
-    P: Pattern<'a> + Copy,
+    P: for<'b> Pattern<'b> + Copy,
 {
     predicate
         .into_searcher(input)

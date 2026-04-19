@@ -35,7 +35,7 @@ macro_rules! filter_str {
         impl<'a, I, S> $crate::parse::Parse<'a, I> for $name<S>
         where
             I: $crate::input::Input<'a>,
-            S: AsRef<str> + From<&'a str>,
+            S: AsRef<str> + $crate::input::FromInputStr<'a, I>,
         {
             #[inline]
             fn parse_with_context(
@@ -54,7 +54,12 @@ macro_rules! filter_str {
                         preview
                     )));
                 }
-                Ok(($name { value: S::from(s) }, rest))
+                Ok((
+                    $name {
+                        value: S::from_input_str(s)?,
+                    },
+                    rest,
+                ))
             }
         }
 

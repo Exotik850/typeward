@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use super::{Input, shared};
+use super::{BorrowInput, Input, shared};
 use crate::error::ParseResult;
 use stable_pattern::Pattern;
 
@@ -45,18 +45,36 @@ impl<'a> Input<'a> for &'a [u8] {
         Ok(chars.next().map(|ch| (ch, &self[ch.len_utf8()..])))
     }
 
-    fn take_while<P>(self, predicate: P) -> ParseResult<(&'a str, Self)>
+    fn take_while<P>(self, predicate: P) -> ParseResult<(Cow<'a, str>, Self)>
     where
-        P: Pattern<'a> + Copy,
+        P: for<'b> Pattern<'b> + Copy,
+    {
+        let (matched, rest) = self.take_while_borrowed(predicate)?;
+        Ok((Cow::Borrowed(matched), rest))
+    }
+
+    fn take_till<P>(self, predicate: P) -> ParseResult<(Cow<'a, str>, Self)>
+    where
+        P: for<'b> Pattern<'b> + Copy,
+    {
+        let (matched, rest) = self.take_till_borrowed(predicate)?;
+        Ok((Cow::Borrowed(matched), rest))
+    }
+}
+
+impl<'a> BorrowInput<'a> for &'a [u8] {
+    fn take_while_borrowed<P>(self, predicate: P) -> ParseResult<(&'a str, Self)>
+    where
+        P: for<'b> Pattern<'b> + Copy,
     {
         let s = shared::utf8(self)?;
         let idx = shared::take_while_prefix_len(s, predicate);
         Ok((&s[..idx], &self[idx..]))
     }
 
-    fn take_till<P>(self, predicate: P) -> ParseResult<(&'a str, Self)>
+    fn take_till_borrowed<P>(self, predicate: P) -> ParseResult<(&'a str, Self)>
     where
-        P: Pattern<'a> + Copy,
+        P: for<'b> Pattern<'b> + Copy,
     {
         let s = shared::utf8(self)?;
         let (matched, rest) = shared::split_take_till(s, predicate);

@@ -1,4 +1,4 @@
-use crate::input::{Input, ReadInput};
+use crate::input::{Input, ReadInput, ReadInputStreamInput};
 use std::cmp::Reverse;
 
 /// Anchor metadata used to compute absolute parser offsets.
@@ -137,6 +137,19 @@ impl<'a> ParseOffsetInput<'a> for ReadInput<'a> {
             self.as_bytes().len(),
             root,
         )
+    }
+}
+
+impl<'a, R, const N: usize> ParseOffsetInput<'a> for ReadInputStreamInput<'a, R, N>
+where
+    R: std::io::Read,
+{
+    fn parse_offset_anchor(self) -> ParseOffsetAnchor {
+        ParseOffsetAnchor::new(self.absolute_start(), self.input_len())
+    }
+
+    fn parse_offset_from(self, root: ParseOffsetAnchor) -> Option<usize> {
+        byte_offset_from(self.absolute_start(), self.input_len(), root)
     }
 }
 

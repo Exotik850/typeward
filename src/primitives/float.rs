@@ -1,14 +1,16 @@
 use crate::{error::ParseResult, input::Input, parse::Parse};
 
-fn scan_float_end<'a, I>(input: I) -> ParseResult<Option<I>>
+fn scan_float_lexeme<'a, I>(input: I) -> ParseResult<Option<(String, I)>>
 where
     I: Input<'a>,
 {
     let mut rest = input;
+    let mut lexeme = String::new();
 
     if let Some((ch, next)) = rest.take_char()?
         && matches!(ch, '+' | '-')
     {
+        lexeme.push(ch);
         rest = next;
     }
 
@@ -17,10 +19,11 @@ where
     let mut seen_exp = false;
     let mut seen_exp_digit = false;
     let mut exp_sign_allowed = false;
-    let mut best_end = None;
+    let mut best_len = None;
+    let mut best_rest = None;
 
     while let Some((ch, next)) = rest.take_char()? {
-        let consumed = if ch.is_ascii_digit() {
+        let did_consume = if ch.is_ascii_digit() {
             if seen_exp {
                 seen_exp_digit = true;
             } else {
@@ -42,17 +45,22 @@ where
             false
         };
 
-        if !consumed {
+        if !did_consume {
             break;
         }
 
+        lexeme.push(ch);
         rest = next;
         if seen_mantissa_digit && (!seen_exp || seen_exp_digit) {
-            best_end = Some(rest);
+            best_len = Some(lexeme.len());
+            best_rest = Some(rest);
         }
     }
 
-    Ok(best_end)
+    Ok(best_len.zip(best_rest).map(|(len, best_rest)| {
+        let matched = lexeme[..len].to_owned();
+        (matched, best_rest)
+    }))
 }
 
 macro_rules! parse_float {
@@ -67,17 +75,14 @@ macro_rules! parse_float {
                     input: I,
                     _context: &mut crate::parse::ParseOffsetContext,
                 ) -> ParseResult<(Self, I)> {
-                    let input = input.trim_start();
-                    let Some(rest) = scan_float_end(input)? else {
+                    let Some((lexeme, rest)) = scan_float_lexeme(input)? else {
                         return Err(crate::error::ParseError::custom(concat!(
                             "expected ",
                             stringify!($ty)
                         )));
                     };
 
-                    let (result, _) = input.slice_to(rest)?.take_while(|_: char| true)?;
-
-                    match result.parse::<$ty>() {
+                    match lexeme.parse::<$ty>() {
                         Ok(num) => Ok((num, rest)),
                         Err(_) => Err(crate::error::ParseError::custom(concat!(
                             "expected ",
