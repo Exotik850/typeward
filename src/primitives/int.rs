@@ -51,14 +51,15 @@ macro_rules! parse_signed {
                     context: &mut crate::parse::ParseOffsetContext,
                 ) -> ParseResult<(Self, I)> {
                     let input = input.trim_start();
-                    let (sign, rest) = if let Some(rest) = input.strip_prefix("-")? {
-                        (-1, rest)
+                    let sign_trimmed = if let Some(rest) = input.strip_prefix("-")? {
+                        rest
                     } else if let Some(rest) = input.strip_prefix("+")? {
-                        (1, rest)
+                        rest
                     } else {
-                        (1, input)
+                        input
                     };
-                    let (result, rest) = Digit::<&str>::parse_with_context(rest, context)?;
+
+                    let (result, rest) = Digit::<&str>::parse_with_context(sign_trimmed, context)?;
                     if result.is_empty() {
                         return Err(crate::error::ParseError::custom(format!(
                             "expected {}, found '{}'",
@@ -66,12 +67,14 @@ macro_rules! parse_signed {
                             input.display()
                         )));
                     }
-                    match result.parse::<$ty>() {
-                        Ok(num) => Ok((sign * num, rest)),
+
+                    let (signed_lexeme, _) = input.slice_to(rest)?.take_while(|_: char| true)?;
+                    match signed_lexeme.parse::<$ty>() {
+                        Ok(num) => Ok((num, rest)),
                         Err(_) => Err(crate::error::ParseError::custom(format!(
                             "expected {}, found '{}'",
                             stringify!($ty),
-                            result.deref()
+                            signed_lexeme.deref()
                         ))),
                     }
                 }
@@ -148,6 +151,22 @@ mod tests {
         let input = "abc rest";
         let result = i64::parse(input);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_i64_parse_min_value() {
+        let input = "-9223372036854775808 rest";
+        let (num, rest) = i64::parse(input).unwrap();
+        assert_eq!(num, i64::MIN);
+        assert_eq!(rest, " rest");
+    }
+
+    #[test]
+    fn test_i8_parse_min_value() {
+        let input = "-128 rest";
+        let (num, rest) = i8::parse(input).unwrap();
+        assert_eq!(num, i8::MIN);
+        assert_eq!(rest, " rest");
     }
 
     #[test]
