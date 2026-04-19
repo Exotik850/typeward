@@ -3,7 +3,7 @@ use stable_pattern::{Pattern, Searcher};
 
 pub(super) fn utf8(bytes: &[u8]) -> ParseResult<&str> {
     std::str::from_utf8(bytes)
-        .map_err(|err| ParseError::custom(format!("invalid UTF-8 input: {err}")))
+        .map_err(|err| ParseError::fatal(format!("invalid UTF-8 input: {err}")))
 }
 
 pub(super) fn checked_consumed_len(
@@ -12,7 +12,7 @@ pub(super) fn checked_consumed_len(
     input_name: &str,
 ) -> ParseResult<usize> {
     if end_len > input_len {
-        return Err(ParseError::custom(format!(
+        return Err(ParseError::fatal(format!(
             "invalid input bounds while slicing {input_name} input"
         )));
     }

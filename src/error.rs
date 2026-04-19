@@ -126,9 +126,25 @@ impl fmt::Display for SourceSpan {
 }
 
 /// Errors that can occur during parsing.
+///
+/// Parse errors split into two conceptual categories:
+///
+/// - **Recoverable** errors describe normal "this parser didn't match"
+///   failures and can be caught by backtracking combinators such as
+///   [`Option<T>`], [`Result<T, ParseError>`], [`crate::combinators::or::Or`],
+///   and `Many0`.
+/// - **Fatal** errors are produced when the parser cannot make progress for
+///   structural reasons (I/O failures, invalid UTF-8 in a streaming source,
+///   exceeded replay windows, etc.). They short-circuit all backtracking
+///   combinators. Use [`Self::fatal`] / [`Self::into_fatal`] to produce them
+///   and [`Self::is_fatal`] to inspect them.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ParseError {
     /// The parser expected a specific token but found something else.
+    ///
+    /// The `found` field is already truncated to [`DEFAULT_INPUT_PREVIEW`]
+    /// characters at construction time, so this variant never holds the full
+    /// remaining input.
     UnexpectedToken {
         expected: &'static str,
         found: String,
@@ -137,6 +153,10 @@ pub enum ParseError {
     UnexpectedEOF,
     /// A custom error message.
     Custom(Cow<'static, str>),
+    /// A structural error that must not be recovered from by backtracking
+    /// combinators. Produced by I/O failures, invalid UTF-8 in streaming
+    /// sources, exceeded replay windows, etc.
+    Fatal(Box<ParseError>),
     /// Wraps another parse error with a source span.
     WithSpan {
         span: SourceSpan,
@@ -148,6 +168,8 @@ impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ParseError::UnexpectedToken { expected, found } => {
+                // `found` is stored pre-truncated, but re-preview defensively in
+                // case callers constructed the variant manually.
                 let found = preview_input(found, DEFAULT_INPUT_PREVIEW);
                 write!(
                     f,
@@ -156,6 +178,7 @@ impl fmt::Display for ParseError {
             }
             ParseError::UnexpectedEOF => write!(f, "unexpected end of input"),
             ParseError::Custom(msg) => write!(f, "{msg}"),
+            ParseError::Fatal(source) => write!(f, "fatal: {source}"),
             ParseError::WithSpan { span, source } => write!(f, "{source} at {span}"),
         }
     }
@@ -164,7 +187,7 @@ impl fmt::Display for ParseError {
 impl std::error::Error for ParseError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            ParseError::WithSpan { source, .. } => Some(source),
+            ParseError::WithSpan { source, .. } | ParseError::Fatal(source) => Some(source),
             _ => None,
         }
     }
@@ -181,6 +204,47 @@ impl ParseError {
     #[must_use]
     pub fn custom_at<S: Into<Cow<'static, str>>>(msg: S, span: SourceSpan) -> Self {
         Self::custom(msg).with_span(span)
+    }
+
+    /// Build an [`Self::UnexpectedToken`] error with the `found` snippet eagerly
+    /// truncated to [`DEFAULT_INPUT_PREVIEW`] characters.
+    ///
+    /// Prefer this constructor over literal struct construction so that parser
+    /// errors never retain a full copy of remaining input.
+    #[must_use]
+    pub fn unexpected_token(expected: &'static str, found: &str) -> Self {
+        ParseError::UnexpectedToken {
+            expected,
+            found: preview_input(found, DEFAULT_INPUT_PREVIEW),
+        }
+    }
+
+    /// Construct a fatal wrapper around a custom message.
+    ///
+    /// Fatal errors propagate through all backtracking combinators. See the
+    /// type-level documentation on [`ParseError`] for details.
+    #[must_use]
+    pub fn fatal<S: Into<Cow<'static, str>>>(msg: S) -> Self {
+        ParseError::Fatal(Box::new(ParseError::custom(msg)))
+    }
+
+    /// Promote any error into a fatal error if it isn't already one.
+    #[must_use]
+    pub fn into_fatal(self) -> Self {
+        match self {
+            ParseError::Fatal(_) => self,
+            inner => ParseError::Fatal(Box::new(inner)),
+        }
+    }
+
+    /// Returns `true` when this error (or any inner wrapper) is [`Self::Fatal`].
+    #[must_use]
+    pub fn is_fatal(&self) -> bool {
+        match self {
+            ParseError::Fatal(_) => true,
+            ParseError::WithSpan { source, .. } => source.is_fatal(),
+            _ => false,
+        }
     }
 
     /// Attach a span to this error if it does not already carry one.
@@ -202,10 +266,14 @@ impl ParseError {
     }
 
     /// Returns the span associated with this error, if any.
+    ///
+    /// Looks through [`Self::Fatal`] wrappers so a span attached before or
+    /// after fatal-promotion is reported identically.
     #[must_use]
     pub fn span(&self) -> Option<SourceSpan> {
         match self {
             ParseError::WithSpan { span, .. } => Some(*span),
+            ParseError::Fatal(source) => source.span(),
             _ => None,
         }
     }
@@ -242,18 +310,10 @@ impl ParseError {
     #[must_use]
     pub fn root_cause(&self) -> &ParseError {
         match self {
-            ParseError::WithSpan { source, .. } => source.root_cause(),
+            ParseError::WithSpan { source, .. } | ParseError::Fatal(source) => source.root_cause(),
             _ => self,
         }
     }
-}
-
-pub fn custom<S: Into<Cow<'static, str>>>(msg: S) -> ParseError {
-    ParseError::Custom(msg.into())
-}
-
-pub fn custom_at<S: Into<Cow<'static, str>>>(msg: S, span: SourceSpan) -> ParseError {
-    ParseError::custom_at(msg, span)
 }
 
 #[cfg(test)]
@@ -346,5 +406,45 @@ mod tests {
         let source = "a\nxyz\nrest";
         let span = SourceSpan::point(4);
         assert_eq!(span.line_col(source), (2, 3));
+    }
+
+    #[test]
+    fn test_fatal_constructor_marks_is_fatal() {
+        let err = ParseError::fatal("boom");
+        assert!(err.is_fatal());
+        assert_eq!(err.root_cause(), &ParseError::Custom(Cow::Borrowed("boom")));
+    }
+
+    #[test]
+    fn test_into_fatal_is_idempotent() {
+        let once = ParseError::custom("boom").into_fatal();
+        let twice = once.clone().into_fatal();
+        assert_eq!(once, twice);
+        assert!(twice.is_fatal());
+    }
+
+    #[test]
+    fn test_fatal_span_is_transparent_either_way() {
+        let span = SourceSpan::point(7);
+        let a = ParseError::custom("x").with_span(span).into_fatal();
+        let b = ParseError::fatal("x").with_span(span);
+        assert_eq!(a.span(), Some(span));
+        assert_eq!(b.span(), Some(span));
+        assert!(a.is_fatal());
+        assert!(b.is_fatal());
+    }
+
+    #[test]
+    fn test_unexpected_token_constructor_truncates_found() {
+        let long = "x".repeat(DEFAULT_INPUT_PREVIEW + 50);
+        let err = ParseError::unexpected_token("literal", &long);
+        match err {
+            ParseError::UnexpectedToken { found, .. } => {
+                // Truncation marker "..." appended when input exceeds the limit.
+                assert!(found.ends_with("..."));
+                assert!(found.len() < long.len());
+            }
+            other => panic!("unexpected variant: {other:?}"),
+        }
     }
 }

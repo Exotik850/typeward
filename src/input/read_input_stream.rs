@@ -49,14 +49,14 @@ where
     }
 
     fn replay_error() -> ParseError {
-        ParseError::custom(format!(
+        ParseError::fatal(format!(
             "stream backtracking exceeded the {N}-byte replay window"
         ))
     }
 
     fn ensure_non_zero_window() -> ParseResult<()> {
         if N == 0 {
-            return Err(ParseError::custom(
+            return Err(ParseError::fatal(
                 "ReadInputStream requires a non-zero buffer size",
             ));
         }
@@ -100,7 +100,7 @@ where
                 Ok(read) => break read,
                 Err(err) if err.kind() == std::io::ErrorKind::Interrupted => {}
                 Err(err) => {
-                    return Err(ParseError::custom(format!("stream read error: {err}")));
+                    return Err(ParseError::fatal(format!("stream read error: {err}")));
                 }
             }
         };
@@ -169,7 +169,7 @@ where
 
     fn collect_bounded(&self, start: usize, end: usize) -> ParseResult<Vec<u8>> {
         if start > end {
-            return Err(ParseError::custom(
+            return Err(ParseError::fatal(
                 "invalid stream bounds while resolving input segment",
             ));
         }
@@ -183,7 +183,7 @@ where
             match self.byte_at(pos)? {
                 Some(byte) => out.push(byte),
                 None => {
-                    return Err(ParseError::custom(
+                    return Err(ParseError::fatal(
                         "invalid stream bounds while resolving input segment",
                     ));
                 }
@@ -263,7 +263,7 @@ where
         let bytes = self.collect_segment_bytes()?;
         std::str::from_utf8(&bytes)
             .map(str::to_owned)
-            .map_err(|err| ParseError::custom(format!("invalid UTF-8 input: {err}")))
+            .map_err(|err| ParseError::fatal(format!("invalid UTF-8 input: {err}")))
     }
 
     fn next_char_at(self, position: usize) -> ParseResult<Option<(char, usize)>> {
@@ -279,7 +279,7 @@ where
 
         let width = Self::utf8_char_width(first);
         if width == 0 {
-            return Err(ParseError::custom(
+            return Err(ParseError::fatal(
                 "invalid UTF-8 input: invalid leading byte",
             ));
         }
@@ -287,7 +287,7 @@ where
         if let Some(end) = self.end
             && position.saturating_add(width) > end
         {
-            return Err(ParseError::custom(
+            return Err(ParseError::fatal(
                 "invalid UTF-8 input: unexpected end of bounded stream input",
             ));
         }
@@ -297,12 +297,12 @@ where
         for (index, slot) in bytes.iter_mut().enumerate().take(width).skip(1) {
             let absolute = position.saturating_add(index);
             *slot = self.stream.byte_at(absolute)?.ok_or_else(|| {
-                ParseError::custom("invalid UTF-8 input: unexpected end of stream")
+                ParseError::fatal("invalid UTF-8 input: unexpected end of stream")
             })?;
         }
 
         let s = std::str::from_utf8(&bytes[..width])
-            .map_err(|err| ParseError::custom(format!("invalid UTF-8 input: {err}")))?;
+            .map_err(|err| ParseError::fatal(format!("invalid UTF-8 input: {err}")))?;
         let ch = s
             .chars()
             .next()
@@ -437,20 +437,16 @@ where
     }
 
     fn slice_to(self, end: Self) -> ParseResult<Self> {
-        if !std::ptr::eq(self.stream, end.stream) {
-            return Err(ParseError::custom(
+        if !std::ptr::eq(self.stream, end.stream) || self.end != end.end || end.start < self.start {
+            return Err(ParseError::fatal(
                 "invalid stream bounds while slicing input",
             ));
         }
 
-        if self.end != end.end {
-            return Err(ParseError::custom(
-                "invalid stream bounds while slicing input",
-            ));
-        }
-
-        if end.start < self.start {
-            return Err(ParseError::custom(
+        if let Some(bound) = self.end
+            && end.start > bound
+        {
+            return Err(ParseError::fatal(
                 "invalid stream bounds while slicing input",
             ));
         }
@@ -461,14 +457,6 @@ where
 
         if end.start < self.stream.window_start.get() {
             return Err(ReadInputStream::<R, N>::replay_error());
-        }
-
-        if let Some(bound) = self.end
-            && end.start > bound
-        {
-            return Err(ParseError::custom(
-                "invalid stream bounds while slicing input",
-            ));
         }
 
         Ok(self.bounded(end.start))
@@ -707,7 +695,7 @@ mod tests {
         let parsed = parse_complete_input::<_, String>(stream.as_input()).unwrap();
         assert_eq!(parsed, expected);
 
-        let expected_max_calls = ((expected.len() + WINDOW - 1) / WINDOW) + 1;
+        let expected_max_calls = expected.len().div_ceil(WINDOW) + 1;
         assert!(
             calls.get() <= expected_max_calls,
             "expected <= {expected_max_calls} read calls, got {}",
