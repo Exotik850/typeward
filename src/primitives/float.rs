@@ -69,8 +69,8 @@ macro_rules! parse_float {
                 ) -> ParseResult<(Self, I)> {
                     let input = input.trim_start();
                     let Some(rest) = scan_float_end(input)? else {
-                        return Err(crate::error::ParseError::custom(format!(
-                            "expected {}",
+                        return Err(crate::error::ParseError::custom(concat!(
+                            "expected ",
                             stringify!($ty)
                         )));
                     };
@@ -79,8 +79,8 @@ macro_rules! parse_float {
 
                     match result.parse::<$ty>() {
                         Ok(num) => Ok((num, rest)),
-                        Err(_) => Err(crate::error::ParseError::custom(format!(
-                            "expected {}",
+                        Err(_) => Err(crate::error::ParseError::custom(concat!(
+                            "expected ",
                             stringify!($ty)
                         ))),
                     }
@@ -98,17 +98,17 @@ mod tests {
 
     #[test]
     fn test_f64_parse() {
-        let input = "3.14 rest";
+        let input = "3.125 rest";
         let (num, rest) = f64::parse(input).unwrap();
-        assert!((num - 3.14).abs() < f64::EPSILON);
+        assert_eq!(num, 3.125);
         assert_eq!(rest, " rest");
     }
 
     #[test]
     fn test_f64_parse_bytes() {
-        let input: &[u8] = b"2.718 rest";
+        let input: &[u8] = b"2.75 rest";
         let (num, rest) = f64::parse(input).unwrap();
-        assert!((num - 2.718).abs() < f64::EPSILON);
+        assert_eq!(num, 2.75);
         assert_eq!(rest, b" rest");
     }
 

@@ -1,6 +1,4 @@
-use super::filtered::Digit;
 use crate::{error::ParseResult, input::Input, parse::Parse};
-use std::ops::Deref;
 
 macro_rules! parse_unsigned {
     ($($ty:ty),*) => {
@@ -12,26 +10,21 @@ macro_rules! parse_unsigned {
                 #[inline]
                 fn parse_with_context(
                     input: I,
-                    context: &mut crate::parse::ParseOffsetContext,
+                    _context: &mut crate::parse::ParseOffsetContext,
                 ) -> ParseResult<(Self, I)> {
-                    let (result, rest) = Digit::<&str>::parse_with_context(input, context)?;
+                    let (result, rest) = input.take_while(|c: char| c.is_ascii_digit())?;
                     if result.is_empty() {
-                        let preview = crate::error::preview_input(
-                            input.display().as_ref(),
-                            crate::error::DEFAULT_INPUT_PREVIEW,
-                        );
-                        return Err(crate::error::ParseError::custom(format!(
-                            "expected {}, found '{}'",
-                            stringify!($ty),
-                            preview
+                        return Err(crate::error::ParseError::custom(concat!(
+                            "expected ",
+                            stringify!($ty)
                         )));
                     }
+
                     match result.parse::<$ty>() {
                         Ok(num) => Ok((num, rest)),
-                        Err(_) => Err(crate::error::ParseError::custom(format!(
-                            "expected {}, found '{}'",
-                            stringify!($ty),
-                            result.deref()
+                        Err(_) => Err(crate::error::ParseError::custom(concat!(
+                            "expected ",
+                            stringify!($ty)
                         ))),
                     }
                 }
@@ -52,39 +45,57 @@ macro_rules! parse_signed {
                 #[inline]
                 fn parse_with_context(
                     input: I,
-                    context: &mut crate::parse::ParseOffsetContext,
+                    _context: &mut crate::parse::ParseOffsetContext,
                 ) -> ParseResult<(Self, I)> {
                     let input = input.trim_start();
-                    let sign_trimmed = if let Some(rest) = input.strip_prefix("-")? {
-                        rest
+                    let (negative, sign_trimmed) = if let Some(rest) = input.strip_prefix("-")? {
+                        (true, rest)
                     } else if let Some(rest) = input.strip_prefix("+")? {
-                        rest
+                        (false, rest)
                     } else {
-                        input
+                        (false, input)
                     };
 
-                    let (result, rest) = Digit::<&str>::parse_with_context(sign_trimmed, context)?;
+                    let (result, rest) = sign_trimmed.take_while(|c: char| c.is_ascii_digit())?;
                     if result.is_empty() {
-                        let preview = crate::error::preview_input(
-                            input.display().as_ref(),
-                            crate::error::DEFAULT_INPUT_PREVIEW,
-                        );
-                        return Err(crate::error::ParseError::custom(format!(
-                            "expected {}, found '{}'",
-                            stringify!($ty),
-                            preview
+                        return Err(crate::error::ParseError::custom(concat!(
+                            "expected ",
+                            stringify!($ty)
                         )));
                     }
 
-                    let (signed_lexeme, _) = input.slice_to(rest)?.take_while(|_: char| true)?;
-                    match signed_lexeme.parse::<$ty>() {
-                        Ok(num) => Ok((num, rest)),
-                        Err(_) => Err(crate::error::ParseError::custom(format!(
-                            "expected {}, found '{}'",
-                            stringify!($ty),
-                            signed_lexeme.deref()
-                        ))),
-                    }
+                    let magnitude = match result.parse::<u128>() {
+                        Ok(value) => value,
+                        Err(_) => {
+                            return Err(crate::error::ParseError::custom(concat!(
+                                "expected ",
+                                stringify!($ty)
+                            )));
+                        }
+                    };
+
+                    let max = <$ty>::MAX as u128;
+                    let value = if negative {
+                        if magnitude == max + 1 {
+                            <$ty>::MIN
+                        } else if magnitude <= max {
+                            -(magnitude as $ty)
+                        } else {
+                            return Err(crate::error::ParseError::custom(concat!(
+                                "expected ",
+                                stringify!($ty)
+                            )));
+                        }
+                    } else if magnitude <= max {
+                        magnitude as $ty
+                    } else {
+                        return Err(crate::error::ParseError::custom(concat!(
+                            "expected ",
+                            stringify!($ty)
+                        )));
+                    };
+
+                    Ok((value, rest))
                 }
             }
         )*
@@ -108,9 +119,10 @@ macro_rules! parse_nonzero {
                     let (value, rest) = <$inner>::parse_with_context(input, context)?;
                     match std::num::$wrapper::new(value) {
                         Some(value) => Ok((value, rest)),
-                        None => Err(crate::error::ParseError::custom(format!(
-                            "expected non-zero {}, found 0",
-                            stringify!($wrapper)
+                        None => Err(crate::error::ParseError::custom(concat!(
+                            "expected non-zero ",
+                            stringify!($wrapper),
+                            ", found 0"
                         ))),
                     }
                 }
