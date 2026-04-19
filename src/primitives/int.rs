@@ -43,6 +43,7 @@ macro_rules! parse_signed {
                 I: Input<'a>,
             {
                 #[inline]
+                #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap, clippy::cast_sign_loss)]
                 fn parse_with_context(
                     input: I,
                     _context: &mut crate::parse::ParseOffsetContext,
@@ -64,14 +65,11 @@ macro_rules! parse_signed {
                         )));
                     }
 
-                    let magnitude = match result.parse::<u128>() {
-                        Ok(value) => value,
-                        Err(_) => {
-                            return Err(crate::error::ParseError::custom(concat!(
-                                "expected ",
-                                stringify!($ty)
+                    let Ok(magnitude) = result.parse::<u128>() else {
+                        return Err(crate::error::ParseError::custom(concat!(
+                            "expected ",
+                            stringify!($ty)
                             )));
-                        }
                     };
 
                     let max = <$ty>::MAX as u128;
@@ -174,10 +172,22 @@ mod tests {
     }
 
     #[test]
-    fn test_i64_parse_min_value() {
+    fn test_i64_parse_overflow() {
+        let input = "9223372036854775808 rest"; // i64::MAX + 1
+        let result = i64::parse(input);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_i64_parse_limits() {
         let input = "-9223372036854775808 rest";
         let (num, rest) = i64::parse(input).unwrap();
         assert_eq!(num, i64::MIN);
+        assert_eq!(rest, " rest");
+
+        let input = "9223372036854775807 rest";
+        let (num, rest) = i64::parse(input).unwrap();
+        assert_eq!(num, i64::MAX);
         assert_eq!(rest, " rest");
     }
 

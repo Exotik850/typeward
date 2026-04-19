@@ -53,8 +53,4 @@ impl<'a> Input<'a> for &'a str {
     {
         Ok(shared::split_take_till(self, predicate))
     }
-
-    fn empty() -> Self {
-        ""
-    }
 }

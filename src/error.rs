@@ -234,8 +234,7 @@ impl ParseError {
                 }
             }
             (Some(_), None) => self,
-            (None, Some(_)) => other,
-            (None, None) => other,
+            (None, _) => other,
         }
     }
 

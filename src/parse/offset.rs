@@ -1,38 +1,17 @@
-use crate::input::{Input, ReadInput, TokenStream};
-use std::{cmp::Reverse, mem};
-
-/// Domain for offset tracking units.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum ParseOffsetDomain {
-    /// Byte offsets (`&str`, `&[u8]`, [`ReadInput`]).
-    Bytes,
-    /// Element offsets (`TokenStream`).
-    Tokens,
-}
+use crate::input::{Input, ReadInput};
+use std::cmp::Reverse;
 
 /// Anchor metadata used to compute absolute parser offsets.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ParseOffsetAnchor {
-    domain: ParseOffsetDomain,
     start: usize,
     len: usize,
-    unit_size: usize,
 }
 
 impl ParseOffsetAnchor {
     #[must_use]
-    pub const fn new(
-        domain: ParseOffsetDomain,
-        start: usize,
-        len: usize,
-        unit_size: usize,
-    ) -> Self {
-        Self {
-            domain,
-            start,
-            len,
-            unit_size,
-        }
+    pub const fn new(start: usize, len: usize) -> Self {
+        Self { start, len }
     }
 }
 
@@ -116,127 +95,48 @@ where
         .map_or(0, |(offset, _)| offset)
 }
 
+fn byte_offset_from(start: usize, len: usize, root: ParseOffsetAnchor) -> Option<usize> {
+    let current_end = start.saturating_add(len);
+    let root_end = root.start.saturating_add(root.len);
+
+    if start < root.start || current_end > root_end {
+        return None;
+    }
+
+    Some(start.saturating_sub(root.start))
+}
+
 impl<'a> ParseOffsetInput<'a> for &'a str {
     fn parse_offset_anchor(self) -> ParseOffsetAnchor {
-        ParseOffsetAnchor::new(
-            ParseOffsetDomain::Bytes,
-            self.as_ptr() as usize,
-            self.len(),
-            1,
-        )
+        ParseOffsetAnchor::new(self.as_ptr() as usize, self.len())
     }
 
     fn parse_offset_from(self, root: ParseOffsetAnchor) -> Option<usize> {
-        if root.domain != ParseOffsetDomain::Bytes || root.unit_size != 1 {
-            return None;
-        }
-
-        let current_start = self.as_ptr() as usize;
-        let current_end = current_start.saturating_add(self.len());
-        let root_end = root.start.saturating_add(root.len);
-
-        if current_start < root.start || current_end > root_end {
-            return None;
-        }
-
-        Some(current_start.saturating_sub(root.start))
+        byte_offset_from(self.as_ptr() as usize, self.len(), root)
     }
 }
 
 impl<'a> ParseOffsetInput<'a> for &'a [u8] {
     fn parse_offset_anchor(self) -> ParseOffsetAnchor {
-        ParseOffsetAnchor::new(
-            ParseOffsetDomain::Bytes,
-            self.as_ptr() as usize,
-            self.len(),
-            1,
-        )
+        ParseOffsetAnchor::new(self.as_ptr() as usize, self.len())
     }
 
     fn parse_offset_from(self, root: ParseOffsetAnchor) -> Option<usize> {
-        if root.domain != ParseOffsetDomain::Bytes || root.unit_size != 1 {
-            return None;
-        }
-
-        let current_start = self.as_ptr() as usize;
-        let current_end = current_start.saturating_add(self.len());
-        let root_end = root.start.saturating_add(root.len);
-
-        if current_start < root.start || current_end > root_end {
-            return None;
-        }
-
-        Some(current_start.saturating_sub(root.start))
+        byte_offset_from(self.as_ptr() as usize, self.len(), root)
     }
 }
 
 impl<'a> ParseOffsetInput<'a> for ReadInput<'a> {
     fn parse_offset_anchor(self) -> ParseOffsetAnchor {
-        ParseOffsetAnchor::new(
-            ParseOffsetDomain::Bytes,
+        ParseOffsetAnchor::new(self.as_bytes().as_ptr() as usize, self.as_bytes().len())
+    }
+
+    fn parse_offset_from(self, root: ParseOffsetAnchor) -> Option<usize> {
+        byte_offset_from(
             self.as_bytes().as_ptr() as usize,
             self.as_bytes().len(),
-            1,
+            root,
         )
-    }
-
-    fn parse_offset_from(self, root: ParseOffsetAnchor) -> Option<usize> {
-        if root.domain != ParseOffsetDomain::Bytes || root.unit_size != 1 {
-            return None;
-        }
-
-        let current_start = self.as_bytes().as_ptr() as usize;
-        let current_end = current_start.saturating_add(self.as_bytes().len());
-        let root_end = root.start.saturating_add(root.len);
-
-        if current_start < root.start || current_end > root_end {
-            return None;
-        }
-
-        Some(current_start.saturating_sub(root.start))
-    }
-}
-
-impl<'a, T> ParseOffsetInput<'a> for TokenStream<'a, T>
-where
-    T: AsRef<str>,
-{
-    fn parse_offset_anchor(self) -> ParseOffsetAnchor {
-        ParseOffsetAnchor::new(
-            ParseOffsetDomain::Tokens,
-            self.as_slice().as_ptr() as usize,
-            self.as_slice().len(),
-            mem::size_of::<T>(),
-        )
-    }
-
-    fn parse_offset_from(self, root: ParseOffsetAnchor) -> Option<usize> {
-        if root.domain != ParseOffsetDomain::Tokens || root.unit_size != mem::size_of::<T>() {
-            return None;
-        }
-
-        let current_tokens = self.as_slice();
-        let current_start = current_tokens.as_ptr() as usize;
-        let current_len = current_tokens.len();
-
-        if root.unit_size == 0 {
-            if current_start != root.start || current_len > root.len {
-                return None;
-            }
-            return Some(root.len.saturating_sub(current_len));
-        }
-
-        let byte_diff = current_start.checked_sub(root.start)?;
-        if byte_diff % root.unit_size != 0 {
-            return None;
-        }
-
-        let consumed = byte_diff / root.unit_size;
-        if consumed.saturating_add(current_len) > root.len {
-            return None;
-        }
-
-        Some(consumed)
     }
 }
 

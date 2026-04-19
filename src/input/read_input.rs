@@ -42,7 +42,7 @@ impl ReadInputBuf {
             match reader.read(&mut chunk) {
                 Ok(0) => break,
                 Ok(read) => bytes.extend_from_slice(&chunk[..read]),
-                Err(err) if err.kind() == io::ErrorKind::Interrupted => continue,
+                Err(err) if err.kind() == io::ErrorKind::Interrupted => {}
                 Err(err) => return Err(err),
             }
         }
@@ -186,10 +186,6 @@ impl<'a> Input<'a> for ReadInput<'a> {
         let (matched, rest) = shared::split_take_till(s, predicate);
         let split = self.bytes.len() - rest.len();
         Ok((matched, Self::new(&self.bytes[split..])))
-    }
-
-    fn empty() -> Self {
-        Self::new(&[])
     }
 }
 

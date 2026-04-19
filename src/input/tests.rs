@@ -1,4 +1,4 @@
-use super::{Input, TokenStream};
+use super::{Input, ReadInput};
 
 #[test]
 fn bytes_take_while() {
@@ -17,28 +17,9 @@ fn str_take_while() {
 }
 
 #[test]
-fn take_while_stream() {
-    let input = ["abc", "def", "123"];
-    let (alpha, rest) = TokenStream::new(&input)
-        .take_while(char::is_alphabetic)
-        .unwrap();
+fn read_input_take_while() {
+    let input = ReadInput::new(b"abc123");
+    let (alpha, rest) = input.take_while(char::is_alphabetic).unwrap();
     assert_eq!(alpha, "abc");
-    assert_eq!(rest.as_slice(), &["def", "123"]);
-}
-
-#[test]
-fn token_stream_take_while_full_token_only() {
-    let input = ["hello", "world"];
-    let (tok, rest) = TokenStream::new(&input)
-        .take_while(char::is_alphabetic)
-        .unwrap();
-    assert_eq!(tok, "hello");
-    assert_eq!(rest.as_slice(), &["world"]);
-}
-
-#[test]
-fn token_stream_rejects_partial_consumption() {
-    let input = ["abc123"];
-    let result = TokenStream::new(&input).take_while(char::is_alphabetic);
-    assert!(result.is_err());
+    assert_eq!(rest.as_bytes(), b"123");
 }

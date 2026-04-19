@@ -62,8 +62,4 @@ impl<'a> Input<'a> for &'a [u8] {
         let (matched, rest) = shared::split_take_till(s, predicate);
         Ok((matched, rest.as_bytes()))
     }
-
-    fn empty() -> Self {
-        &[]
-    }
 }

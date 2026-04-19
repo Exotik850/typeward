@@ -31,8 +31,7 @@ where
                 crate::error::DEFAULT_INPUT_PREVIEW,
             );
             Err(crate::error::ParseError::custom(format!(
-                "expected 'true' or 'false', found '{}'",
-                preview
+                "expected 'true' or 'false', found '{preview}'"
             )))
         }
     }

@@ -133,8 +133,7 @@ where
                 crate::error::DEFAULT_INPUT_PREVIEW,
             );
             return Err(ParseError::custom(format!(
-                "unexpected trailing input inside nested delimiter: '{}'",
-                preview
+                "unexpected trailing input inside nested delimiter: '{preview}'"
             ))
             .with_span(span));
         }
@@ -146,7 +145,10 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{literals::*, parse::{Parse, parse_complete}};
+    use crate::{
+        literals::*,
+        parse::{Parse, parse_complete},
+    };
 
     use super::DelimNested;
 

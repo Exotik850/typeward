@@ -110,7 +110,6 @@ impl<T> SpanExt for T {
 mod tests {
     use super::*;
     use crate::combinators::ws::Ws;
-    use crate::input::TokenStream;
     use crate::literals::KwNull;
 
     #[test]
@@ -144,14 +143,12 @@ mod tests {
     }
 
     #[test]
-    fn parse_spanned_tracks_token_offsets_without_complete_parse() {
+    fn parse_spanned_tracks_byte_offsets_without_complete_parse() {
         type Parser = crate::and!(Ws<i64>, Span<Ws<KwNull>>);
-        let tokens = ["42", "null", "!"];
+        let (spanned, rest) = Parser::parse_spanned(b"42 null!".as_slice()).unwrap();
 
-        let (spanned, rest) = Parser::parse_spanned(TokenStream::new(&tokens)).unwrap();
-
-        assert_eq!(spanned.span, 0..2);
-        assert_eq!(spanned.inner.right.span, 1..2);
-        assert_eq!(rest.as_slice(), &["!"]);
+        assert_eq!(spanned.span, 0..7);
+        assert_eq!(spanned.inner.right.span, 2..7);
+        assert_eq!(rest, b"!");
     }
 }

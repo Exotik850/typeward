@@ -25,8 +25,7 @@ where
                 crate::error::DEFAULT_INPUT_PREVIEW,
             );
             return Err(crate::error::ParseError::custom(format!(
-                "expected string, found '{}'",
-                preview
+                "expected string, found '{preview}'"
             )));
         }
 
@@ -114,7 +113,7 @@ pub type TakeTillTokenCow<'a, T> = TakeTillToken<T, Cow<'a, str>>;
 #[cfg(test)]
 mod tests {
     use crate::literals::Comma;
-    use crate::{input::TokenStream, primitives::prelude::AlphaString};
+    use crate::primitives::prelude::AlphaString;
 
     use super::*;
 
@@ -127,11 +126,10 @@ mod tests {
     }
 
     #[test]
-    fn test_alpha_parse_token_stream() {
-        let tokens = ["hello", "world"];
-        let (word, rest) = AlphaString::parse(TokenStream::new(&tokens)).unwrap();
+    fn test_alpha_parse_bytes() {
+        let (word, rest) = AlphaString::parse(b"hello world".as_slice()).unwrap();
         assert_eq!(word.value, "hello");
-        assert_eq!(rest.as_slice(), &["world"]);
+        assert_eq!(rest, b" world");
     }
 
     #[test]

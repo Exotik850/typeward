@@ -19,7 +19,8 @@ where
         value: I,
         _context: &mut crate::parse::ParseOffsetContext,
     ) -> crate::error::ParseResult<(Self, I)> {
-        Ok((Rest { value }, I::empty()))
+        let empty = value.slice_to(value)?;
+        Ok((Rest { value }, empty))
     }
 }
 
@@ -60,8 +61,7 @@ where
                 crate::error::DEFAULT_INPUT_PREVIEW,
             );
             Err(crate::error::custom(format!(
-                "Expected end of input, but found '{}'",
-                preview
+                "Expected end of input, but found '{preview}'"
             )))
         }
     }

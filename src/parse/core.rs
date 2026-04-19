@@ -10,8 +10,8 @@ use std::marker::PhantomData;
 /// The lifetime parameter `'a` represents the lifetime of the borrowed input.
 ///
 /// The second generic parameter defaults to `&str`, which keeps string parsing
-/// ergonomic while allowing additional input forms such as `&[u8]` and token
-/// slices.
+/// ergonomic while allowing additional input forms such as `&[u8]` and
+/// [`crate::input::ReadInput`].
 pub trait Parse<'a, I: Input<'a> = &'a str>: Sized {
     /// Parse a value from the input.
     ///

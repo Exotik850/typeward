@@ -2,12 +2,10 @@ mod bytes_input;
 mod read_input;
 mod shared;
 mod str_input;
-mod token_stream;
 
 use std::borrow::Cow;
 
 pub use read_input::{ReadInput, ReadInputBuf};
-pub use token_stream::TokenStream;
 
 use crate::error::ParseResult;
 use stable_pattern::Pattern;
@@ -18,7 +16,6 @@ use stable_pattern::Pattern;
 /// - `&str`
 /// - `&[u8]` (UTF-8)
 /// - [`ReadInput`] for read-backed byte buffers
-/// - [`TokenStream`] for token sequences where `T: AsRef<str>`
 pub trait Input<'a>: Copy + Sized {
     /// Returns the number of remaining units in the input.
     fn input_len(self) -> usize;
@@ -61,9 +58,6 @@ pub trait Input<'a>: Copy + Sized {
     fn take_till<P>(self, predicate: P) -> ParseResult<(&'a str, Self)>
     where
         P: Pattern<'a> + Copy;
-
-    /// Returns an empty input value of the same type.
-    fn empty() -> Self;
 }
 
 #[cfg(test)]

@@ -40,11 +40,10 @@ where
                 remaining.display().as_ref(),
                 crate::error::DEFAULT_INPUT_PREVIEW,
             );
-            Err(ParseError::custom(format!(
-                "unexpected trailing input: '{}'",
-                preview
-            ))
-            .with_span(span))
+            Err(
+                ParseError::custom(format!("unexpected trailing input: '{preview}'"))
+                    .with_span(span),
+            )
         }
     })
 }
@@ -63,7 +62,7 @@ mod tests {
     use super::*;
     use crate::combinators::{span::Span, ws::Ws};
     use crate::error::SourceSpan;
-    use crate::input::{ReadInputBuf, TokenStream};
+    use crate::input::ReadInputBuf;
     use crate::lit_token;
     use crate::literals::KwNull;
     use std::io::Cursor;
@@ -102,22 +101,6 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_complete_input_tokens() {
-        let tokens = ["hello"];
-        let result = parse_complete_input::<_, HelloParser>(TokenStream::new(&tokens)).unwrap();
-        let _ = result;
-    }
-
-    #[test]
-    fn test_parse_complete_input_spanned_tokens() {
-        let tokens = ["hello"];
-        let result =
-            parse_complete_input_spanned::<_, HelloParser>(TokenStream::new(&tokens)).unwrap();
-        assert_eq!(result.span.start, 0);
-        assert_eq!(result.span.end, 1);
-    }
-
-    #[test]
     fn test_parse_complete_input_spanned_bytes_uses_byte_offsets() {
         let result = parse_complete_input_spanned::<_, char>("\u{00E9}".as_bytes()).unwrap();
         assert_eq!(result.inner, '\u{00E9}');
@@ -129,14 +112,6 @@ mod tests {
         let err = parse_complete_input::<_, HelloParser>("hello\u{00E9}".as_bytes())
             .expect_err("expected trailing byte input error");
         assert_eq!(err.span(), Some(SourceSpan::new(5, 7)));
-    }
-
-    #[test]
-    fn test_parse_complete_input_trailing_tokens_reports_token_span() {
-        let tokens = ["hello", "world"];
-        let err = parse_complete_input::<_, HelloParser>(TokenStream::new(&tokens))
-            .expect_err("expected trailing token input error");
-        assert_eq!(err.span(), Some(SourceSpan::new(1, 2)));
     }
 
     #[test]
