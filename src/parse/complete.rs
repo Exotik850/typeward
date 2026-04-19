@@ -127,8 +127,7 @@ mod tests {
     #[test]
     fn test_parse_complete_input_trailing_bytes_reports_byte_span() {
         let err = parse_complete_input::<_, HelloParser>("hello\u{00E9}".as_bytes())
-            .err()
-            .expect("expected trailing byte input error");
+            .expect_err("expected trailing byte input error");
         assert_eq!(err.span(), Some(SourceSpan::new(5, 7)));
     }
 
@@ -136,8 +135,7 @@ mod tests {
     fn test_parse_complete_input_trailing_tokens_reports_token_span() {
         let tokens = ["hello", "world"];
         let err = parse_complete_input::<_, HelloParser>(TokenStream::new(&tokens))
-            .err()
-            .expect("expected trailing token input error");
+            .expect_err("expected trailing token input error");
         assert_eq!(err.span(), Some(SourceSpan::new(1, 2)));
     }
 
@@ -154,8 +152,7 @@ mod tests {
         let input = ReadInputBuf::from_read(Cursor::new("hello\u{00E9}".as_bytes()))
             .expect("reading from cursor should not fail");
         let err = parse_complete_input::<_, HelloParser>(input.as_input())
-            .err()
-            .expect("expected trailing read input error");
+            .expect_err("expected trailing read input error");
         assert_eq!(err.span(), Some(SourceSpan::new(5, 7)));
     }
 
@@ -188,9 +185,9 @@ mod tests {
 
         std::thread::scope(|s| {
             let handles = [
-                s.spawn(|| parse_complete::<Parser>(&strs[0]).unwrap().right.span),
-                s.spawn(|| parse_complete::<Parser>(&strs[1]).unwrap().right.span),
-                s.spawn(|| parse_complete::<Parser>(&strs[2]).unwrap().right.span),
+                s.spawn(|| parse_complete::<Parser>(strs[0]).unwrap().right.span),
+                s.spawn(|| parse_complete::<Parser>(strs[1]).unwrap().right.span),
+                s.spawn(|| parse_complete::<Parser>(strs[2]).unwrap().right.span),
             ];
 
             let spans: Vec<_> = handles

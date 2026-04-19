@@ -10,15 +10,13 @@ pub fn preview_input(input: &str, max_chars: usize) -> String {
         return String::new();
     }
 
-    let mut char_count = 0usize;
     let mut cut_at = input.len();
 
-    for (idx, _) in input.char_indices() {
+    for (char_count, (idx, _)) in input.char_indices().enumerate() {
         if char_count == max_chars {
             cut_at = idx;
             break;
         }
-        char_count += 1;
     }
 
     if cut_at == input.len() {
