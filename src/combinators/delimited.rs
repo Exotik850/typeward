@@ -113,8 +113,8 @@ where
         input: In,
         context: &mut crate::parse::ParseOffsetContext,
     ) -> ParseResult<(Self, In)> {
-        let (start, remaining) = S::parse_with_context(input, context)?;        
-        
+        let (start, remaining) = S::parse_with_context(input, context)?;
+
         let end_match = remaining.find(E::VALUE)?;
         let (inner_input, close_start) = if let Some(match_input) = end_match {
             let inner_val = remaining.slice_to(match_input)?;
@@ -122,14 +122,17 @@ where
         } else {
             let start_offset = crate::parse::current_parse_offset(context, remaining);
             return Err(crate::error::ParseError::custom(format!(
-                "delimited exact: missing closing token `{}`", E::VALUE
-            )).with_span(crate::error::SourceSpan::point(start_offset)));
+                "delimited exact: missing closing token `{}`",
+                E::VALUE
+            ))
+            .with_span(crate::error::SourceSpan::point(start_offset)));
         };
 
-        let (inner, inner_rest) = I::parse_with_context(inner_input, context)?;    
+        let (inner, inner_rest) = I::parse_with_context(inner_input, context)?;
         if !inner_rest.is_empty() {
             let start = crate::parse::current_parse_offset(context, inner_rest);
-            let span = crate::error::SourceSpan::new(start, start.saturating_add(inner_rest.input_len()));
+            let span =
+                crate::error::SourceSpan::new(start, start.saturating_add(inner_rest.input_len()));
             let preview = crate::error::preview_input(
                 inner_rest.display().as_ref(),
                 crate::error::DEFAULT_INPUT_PREVIEW,
@@ -139,8 +142,8 @@ where
             ))
             .with_span(span));
         }
-        
-        let (end, remaining) = E::parse_with_context(close_start, context)?;      
+
+        let (end, remaining) = E::parse_with_context(close_start, context)?;
 
         Ok((DelimitedExact { start, end, inner }, remaining))
     }

@@ -276,8 +276,7 @@ mod tests {
         // signed / unsigned parsers behave consistently.
         let input = "1 2 three 4";
         let mut context = ParseOffsetContext::new();
-        let (result, remaining) =
-            Vec::<Ws<i64>>::parse_with_context(input, &mut context).unwrap();
+        let (result, remaining) = Vec::<Ws<i64>>::parse_with_context(input, &mut context).unwrap();
         let values: Vec<i64> = result.into_iter().map(Ws::into_inner).collect();
         assert_eq!(values, vec![1, 2]);
         assert_eq!(remaining, " three 4");
