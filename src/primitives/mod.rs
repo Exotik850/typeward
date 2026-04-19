@@ -26,9 +26,13 @@ where
         } else if let Some(rest) = input.strip_prefix("false")? {
             Ok((false, rest))
         } else {
+            let preview = crate::error::preview_input(
+                input.display().as_ref(),
+                crate::error::DEFAULT_INPUT_PREVIEW,
+            );
             Err(crate::error::ParseError::custom(format!(
                 "expected 'true' or 'false', found '{}'",
-                input.display()
+                preview
             )))
         }
     }

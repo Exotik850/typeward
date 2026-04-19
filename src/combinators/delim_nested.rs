@@ -128,9 +128,13 @@ where
         if !inner_rest.is_empty() {
             let start = current_parse_offset(context, inner_rest);
             let span = SourceSpan::new(start, start.saturating_add(inner_rest.input_len()));
+            let preview = crate::error::preview_input(
+                inner_rest.display().as_ref(),
+                crate::error::DEFAULT_INPUT_PREVIEW,
+            );
             return Err(ParseError::custom(format!(
                 "unexpected trailing input inside nested delimiter: '{}'",
-                inner_rest.display()
+                preview
             ))
             .with_span(span));
         }

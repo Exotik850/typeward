@@ -44,10 +44,14 @@ macro_rules! filter_str {
             ) -> $crate::error::ParseResult<(Self, I)> {
                 let (s, rest) = input.take_while($filter)?;
                 if s.is_empty() {
+                    let preview = $crate::error::preview_input(
+                        input.display().as_ref(),
+                        $crate::error::DEFAULT_INPUT_PREVIEW,
+                    );
                     return Err($crate::error::ParseError::custom(format!(
                         "expected {}, found '{}'",
                         stringify!($name),
-                        input.display()
+                        preview
                     )));
                 }
                 Ok(($name { value: S::from(s) }, rest))

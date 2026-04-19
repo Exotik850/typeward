@@ -20,9 +20,13 @@ where
 
         let (token, rest) = input.take_while(|c: char| !c.is_whitespace())?;
         if token.is_empty() {
+            let preview = crate::error::preview_input(
+                input.display().as_ref(),
+                crate::error::DEFAULT_INPUT_PREVIEW,
+            );
             return Err(crate::error::ParseError::custom(format!(
                 "expected string, found '{}'",
-                input.display()
+                preview
             )));
         }
 

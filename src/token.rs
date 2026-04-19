@@ -55,9 +55,13 @@ where
         if let Some(remaining) = input.strip_prefix(Self::VALUE)? {
             Ok((Self::default(), remaining))
         } else {
+            let found = input.display();
             Err(ParseError::UnexpectedToken {
                 expected: Self::VALUE,
-                found: input.display().into_owned(),
+                found: crate::error::preview_input(
+                    found.as_ref(),
+                    crate::error::DEFAULT_INPUT_PREVIEW,
+                ),
             }
             .with_span(SourceSpan::point(current_parse_offset(context, input))))
         }

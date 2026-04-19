@@ -16,10 +16,14 @@ macro_rules! parse_unsigned {
                 ) -> ParseResult<(Self, I)> {
                     let (result, rest) = Digit::<&str>::parse_with_context(input, context)?;
                     if result.is_empty() {
+                        let preview = crate::error::preview_input(
+                            input.display().as_ref(),
+                            crate::error::DEFAULT_INPUT_PREVIEW,
+                        );
                         return Err(crate::error::ParseError::custom(format!(
                             "expected {}, found '{}'",
                             stringify!($ty),
-                            input.display()
+                            preview
                         )));
                     }
                     match result.parse::<$ty>() {
@@ -61,10 +65,14 @@ macro_rules! parse_signed {
 
                     let (result, rest) = Digit::<&str>::parse_with_context(sign_trimmed, context)?;
                     if result.is_empty() {
+                        let preview = crate::error::preview_input(
+                            input.display().as_ref(),
+                            crate::error::DEFAULT_INPUT_PREVIEW,
+                        );
                         return Err(crate::error::ParseError::custom(format!(
                             "expected {}, found '{}'",
                             stringify!($ty),
-                            input.display()
+                            preview
                         )));
                     }
 

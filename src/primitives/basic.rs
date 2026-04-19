@@ -55,9 +55,13 @@ where
         if input.is_empty() {
             Ok((Eof, input))
         } else {
+            let preview = crate::error::preview_input(
+                input.display().as_ref(),
+                crate::error::DEFAULT_INPUT_PREVIEW,
+            );
             Err(crate::error::custom(format!(
                 "Expected end of input, but found '{}'",
-                input.display()
+                preview
             )))
         }
     }

@@ -1,5 +1,36 @@
 use std::{borrow::Cow, fmt, ops::Range};
 
+/// Default maximum character count for rendering input snippets in errors.
+pub const DEFAULT_INPUT_PREVIEW: usize = 80;
+
+/// Truncate an input snippet to at most `max_chars` Unicode scalar values.
+#[must_use]
+pub fn preview_input(input: &str, max_chars: usize) -> String {
+    if max_chars == 0 {
+        return String::new();
+    }
+
+    let mut char_count = 0usize;
+    let mut cut_at = input.len();
+
+    for (idx, _) in input.char_indices() {
+        if char_count == max_chars {
+            cut_at = idx;
+            break;
+        }
+        char_count += 1;
+    }
+
+    if cut_at == input.len() {
+        input.to_owned()
+    } else {
+        let mut preview = String::with_capacity(cut_at + 3);
+        preview.push_str(&input[..cut_at]);
+        preview.push_str("...");
+        preview
+    }
+}
+
 /// The result of a parsing operation.
 pub type ParseResult<T> = Result<T, ParseError>;
 
@@ -119,6 +150,7 @@ impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ParseError::UnexpectedToken { expected, found } => {
+                let found = preview_input(found, DEFAULT_INPUT_PREVIEW);
                 write!(
                     f,
                     "unexpected token: expected '{expected}', found '{found}'"
@@ -219,6 +251,14 @@ impl ParseError {
     }
 }
 
+pub fn custom<S: Into<Cow<'static, str>>>(msg: S) -> ParseError {
+    ParseError::Custom(msg.into())
+}
+
+pub fn custom_at<S: Into<Cow<'static, str>>>(msg: S, span: SourceSpan) -> ParseError {
+    ParseError::custom_at(msg, span)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -251,6 +291,20 @@ mod tests {
     fn test_error_display_with_span() {
         let err = ParseError::custom("something went wrong").with_span(SourceSpan::new(3, 6));
         assert_eq!(format!("{}", err), "something went wrong at offsets 3..6");
+    }
+
+    #[test]
+    fn test_preview_input_truncates_long_values() {
+        let input = "abcdefghijklmnopqrstuvwxyz";
+        let preview = preview_input(input, 5);
+        assert_eq!(preview, "abcde...");
+    }
+
+    #[test]
+    fn test_preview_input_keeps_short_values() {
+        let input = "short";
+        let preview = preview_input(input, 10);
+        assert_eq!(preview, "short");
     }
 
     #[test]
@@ -296,12 +350,4 @@ mod tests {
         let span = SourceSpan::point(4);
         assert_eq!(span.line_col(source), (2, 3));
     }
-}
-
-pub fn custom<S: Into<Cow<'static, str>>>(msg: S) -> ParseError {
-    ParseError::Custom(msg.into())
-}
-
-pub fn custom_at<S: Into<Cow<'static, str>>>(msg: S, span: SourceSpan) -> ParseError {
-    ParseError::custom_at(msg, span)
 }

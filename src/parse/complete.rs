@@ -36,9 +36,13 @@ where
         } else {
             let start = current_parse_offset(context, remaining);
             let span = crate::error::SourceSpan::new(start, start + remaining.input_len());
+            let preview = crate::error::preview_input(
+                remaining.display().as_ref(),
+                crate::error::DEFAULT_INPUT_PREVIEW,
+            );
             Err(ParseError::custom(format!(
                 "unexpected trailing input: '{}'",
-                remaining.display()
+                preview
             ))
             .with_span(span))
         }
