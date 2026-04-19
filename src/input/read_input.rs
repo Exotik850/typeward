@@ -27,14 +27,26 @@ impl ReadInputBuf {
     }
 
     /// Read all bytes from `reader` into an owned buffer, pre-allocating with the given capacity.
+    ///
+    /// # Errors
+    ///
+    /// Returns any I/O error produced while reading from the source.
     pub fn with_capacity<R>(mut reader: R, capacity: usize) -> io::Result<Self>
     where
         R: Read,
     {
         let mut bytes = Vec::with_capacity(capacity);
-        reader
-            .read_to_end(&mut bytes)
-            .expect("failed to read from source");
+        let mut chunk = [0_u8; 8 * 1024];
+
+        loop {
+            match reader.read(&mut chunk) {
+                Ok(0) => break,
+                Ok(read) => bytes.extend_from_slice(&chunk[..read]),
+                Err(err) if err.kind() == io::ErrorKind::Interrupted => continue,
+                Err(err) => return Err(err),
+            }
+        }
+
         Ok(Self { bytes })
     }
 
@@ -190,6 +202,7 @@ mod tests {
         input::Input,
         lit_token,
         parse::{parse_complete_input, parse_complete_input_spanned},
+        prelude::Parenthesized,
     };
 
     lit_token!(HelloToken, "hello");
@@ -276,6 +289,16 @@ mod tests {
         let buffered = BufReader::new(Cursor::new(b"hello"));
         let input = ReadInputBuf::from_read(buffered).unwrap();
         let _ = parse_complete_input::<_, HelloToken>(input.as_input()).unwrap();
+    }
+
+    #[test]
+    fn parse_complete_input_reads_and_parses_data_larger_than_default_capacity() {
+        let payload = format!("({})", "a".repeat((8 * 1024) + 257));
+        let input = ReadInputBuf::from_read(Cursor::new(payload.as_bytes())).unwrap();
+        assert_eq!(input.as_bytes(), payload.as_bytes());
+
+        let parsed = parse_complete_input::<_, Parenthesized<String>>(input.as_input()).unwrap();
+        assert_eq!(parsed.inner, &payload[1..payload.len() - 1]);
     }
 
     #[test]
