@@ -1,10 +1,15 @@
 use crate::{
-    error::{ParseError, ParseResult},
+    error::{ParseError, ParseResult, SourceSpan},
     literals::{LBrace, LBracket, LParen, RBrace, RBracket, RParen},
-    parse::{Parse, ParseOffsetInput},
+    parse::{Parse, ParseOffsetInput, current_parse_offset},
     token::Token,
 };
 
+/// A combinator for parsing nested delimiters, like parentheses, brackets, or braces.
+///
+/// This combinator handles balanced delimiters and allows the inner content to contain
+/// nested occurrences of the same delimiters. For example, it can parse `((42))` (with [`Parenthesized`]) as a parenthesized integer,
+/// or `[a[b]c]` as a bracketed string (with [`Bracketed`]), correctly handling the nesting structure.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct DelimNested<Left, Right, Inner> {
     pub left: Left,
@@ -37,8 +42,11 @@ impl<Left, Right, Inner> DelimNested<Left, Right, Inner> {
     }
 }
 
+/// Parenthesized content, e.g. `(content)`
 pub type Parenthesized<I> = DelimNested<LParen, RParen, I>;
+/// Bracketed content, e.g. `[content]`
 pub type Bracketed<I> = DelimNested<LBracket, RBracket, I>;
+/// Braced content, e.g. `{content}`
 pub type Braced<I> = DelimNested<LBrace, RBrace, I>;
 
 impl<'a, I, Left, Right, Inner> Parse<'a, I> for DelimNested<Left, Right, Inner>
@@ -114,8 +122,18 @@ where
         };
 
         let inner_input = inner_start.slice_to(close_start)?;
-        // let inner = parse_complete_input::<I, Inner>(inner_input)?;
-        let (inner, _) = Inner::parse_with_context(inner_input, context)?;
+        let (inner, inner_rest) = Inner::parse_with_context(inner_input, context)?;
+        let inner_rest = inner_rest.trim_start();
+
+        if !inner_rest.is_empty() {
+            let start = current_parse_offset(context, inner_rest);
+            let span = SourceSpan::new(start, start.saturating_add(inner_rest.input_len()));
+            return Err(ParseError::custom(format!(
+                "unexpected trailing input inside nested delimiter: '{}'",
+                inner_rest.display()
+            ))
+            .with_span(span));
+        }
 
         let (right, remaining) = Right::parse_with_context(close_start, context)?;
         Ok((DelimNested { left, inner, right }, remaining))
@@ -124,7 +142,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{literals::*, parse::Parse};
+    use crate::{literals::*, parse::{Parse, parse_complete}};
 
     use super::DelimNested;
 
@@ -146,5 +164,15 @@ mod tests {
     fn nested_rejects_unbalanced_input() {
         let result = DelimNested::<LParen, RParen, String>::parse("(a(b)c");
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn nested_rejects_partial_inner_match() {
+        let err = parse_complete::<DelimNested<LParen, RParen, i64>>("(42abc)").unwrap_err();
+        assert_eq!(err.span(), Some(crate::error::SourceSpan::new(3, 6)));
+        assert!(
+            err.to_string()
+                .contains("unexpected trailing input inside nested delimiter")
+        );
     }
 }
