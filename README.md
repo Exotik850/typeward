@@ -53,6 +53,10 @@ type List = Delimited<LBracket, RBracket, Separated0<String, Ws<Comma>>>;
 
 // Try multiple alternatives
 type Value = or!(Ws<KwNull>, Ws<bool>, Ws<f64>, QuotedString, List);
+
+// Also implemented for `Option` and `Result`:
+type OptionalValue = Option<Value>;
+type FallibleValue = Result<Value, ParseError>;
 ```
 
 ### Implementing `Parse` for Custom Types

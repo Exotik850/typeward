@@ -1,5 +1,5 @@
 use super::ParseOffsetContext;
-use crate::error::ParseResult;
+use crate::error::{ParseError, ParseResult};
 use crate::input::Input;
 use std::borrow::Cow;
 use std::marker::PhantomData;
@@ -45,6 +45,20 @@ where
         match T::parse_with_context(input, context) {
             Ok((value, remaining)) => Ok((Some(value), remaining)),
             Err(_) => Ok((None, input)),
+        }
+    }
+}
+
+impl<'a, I, T> Parse<'a, I> for Result<T, ParseError>
+where
+    I: Input<'a>,
+    T: Parse<'a, I>,
+{
+    #[inline]
+    fn parse_with_context(input: I, context: &mut ParseOffsetContext) -> ParseResult<(Self, I)> {
+        match T::parse_with_context(input, context) {
+            Ok((value, remaining)) => Ok((Ok(value), remaining)),
+            Err(err) => Ok((Err(err), input)),
         }
     }
 }
