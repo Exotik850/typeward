@@ -99,6 +99,9 @@ enum Shape {
     Circle { radius: f64 },
     Rect { width: f64, height: f64 },
 }
+
+#[derive(Parse)]
+struct Wrapper<T>(T);
 ```
 
 Field-level attributes like `#[parse(ws)]` and `#[parse(from(ParserType, mapper))]` customize how each field is parsed.
