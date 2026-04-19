@@ -91,7 +91,7 @@ where
         input: In,
         context: &mut crate::parse::ParseOffsetContext,
     ) -> ParseResult<(Self, In)> {
-        let (start, remaining) = S::parse_with_context(input, context)?;
+        let (start, remaining) = S::parse_with_context(input.trim_start(), context)?;
         let remaining = remaining.trim_start();
         let (inner, remaining) = I::parse_with_context(remaining, context)?;
         let remaining = remaining.trim_start();
