@@ -28,8 +28,27 @@ impl<T> Many1<T> {
 
     #[must_use]
     pub fn first(&self) -> &T {
-        // Safe: `Many1` guarantees at least one item
-        &self.items[0]
+        // Invariant: `Many1::parse_with_context` only constructs the value
+        // after pushing the first successful item, so `items` is never empty.
+        self.items
+            .first()
+            .expect("Many1 invariant: at least one item")
+    }
+
+    #[must_use]
+    pub fn last(&self) -> &T {
+        self.items
+            .last()
+            .expect("Many1 invariant: at least one item")
+    }
+
+    /// Convert to the underlying `Vec<T>`.
+    ///
+    /// Guaranteed to be non-empty; prefer [`Self::into_items`] when semantic
+    /// emphasis on the non-empty invariant is desirable.
+    #[must_use]
+    pub fn into_vec(self) -> Vec<T> {
+        self.items
     }
 }
 
@@ -49,10 +68,16 @@ where
         let mut items = Vec::new();
         items.push(first);
 
-        while let Ok((item, new_rest)) = T::parse_with_context(rest, context) {
-            crate::collections::ensure_progress(rest, new_rest, "Many1")?;
-            items.push(item);
-            rest = new_rest;
+        loop {
+            match T::parse_with_context(rest, context) {
+                Ok((item, new_rest)) => {
+                    crate::collections::ensure_progress(rest, new_rest, "Many1")?;
+                    items.push(item);
+                    rest = new_rest;
+                }
+                Err(err) if err.is_fatal() => return Err(err),
+                Err(_) => break,
+            }
         }
 
         Ok((Many1 { items }, rest))

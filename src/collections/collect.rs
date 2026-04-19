@@ -37,6 +37,7 @@ where
                 rest = new_rest;
                 Some(Ok(item))
             }
+            Err(err) if err.is_fatal() => Some(Err(err)),
             Err(_) => None,
         });
 

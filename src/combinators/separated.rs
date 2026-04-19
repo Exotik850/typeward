@@ -48,38 +48,28 @@ where
         let mut separators = Vec::new();
         let mut input = input;
 
-        // Parse the first item
+        // Parse the required first item.
         let (first_item, remaining) = T::parse_with_context(input, context)?;
-        if input.input_len() == remaining.input_len() {
-            return Err(crate::error::ParseError::custom(
-                "Separated item parser matched without consuming input",
-            ));
-        }
+        crate::collections::ensure_progress(input, remaining, "Separated")?;
         items.push(first_item);
         input = remaining;
 
         loop {
-            // Try to parse a separator
+            // Try to parse a separator.
             match S::parse_with_context(input, context) {
                 Ok((sep, remaining)) => {
-                    if input.input_len() == remaining.input_len() {
-                        return Err(crate::error::ParseError::custom(
-                            "Separated separator parser matched without consuming input",
-                        ));
-                    }
+                    crate::collections::ensure_progress(input, remaining, "Separated")?;
                     separators.push(sep);
                     input = remaining;
                 }
-                Err(_) => break, // No more separators, we're done
+                Err(err) if err.is_fatal() => return Err(err),
+                Err(_) => break, // No more separators, we're done.
             }
 
-            // Parse the next item
+            // Parse the next item; propagate parse failures after a separator
+            // because trailing separators are disallowed by `Separated`.
             let (item, remaining) = T::parse_with_context(input, context)?;
-            if input.input_len() == remaining.input_len() {
-                return Err(crate::error::ParseError::custom(
-                    "Separated item parser matched without consuming input",
-                ));
-            }
+            crate::collections::ensure_progress(input, remaining, "Separated")?;
             items.push(item);
             input = remaining;
         }
@@ -145,14 +135,11 @@ where
 
         match T::parse_with_context(input, context) {
             Ok((first_item, remaining)) => {
-                if input.input_len() == remaining.input_len() {
-                    return Err(crate::error::ParseError::custom(
-                        "Separated0 item parser matched without consuming input",
-                    ));
-                }
+                crate::collections::ensure_progress(input, remaining, "Separated0")?;
                 items.push(first_item);
                 input = remaining;
             }
+            Err(err) if err.is_fatal() => return Err(err),
             Err(_) => {
                 return Ok((Separated0 { items, separators }, input));
             }
@@ -161,23 +148,16 @@ where
         loop {
             match S::parse_with_context(input, context) {
                 Ok((sep, remaining)) => {
-                    if input.input_len() == remaining.input_len() {
-                        return Err(crate::error::ParseError::custom(
-                            "Separated0 separator parser matched without consuming input",
-                        ));
-                    }
+                    crate::collections::ensure_progress(input, remaining, "Separated0")?;
                     separators.push(sep);
                     input = remaining;
                 }
+                Err(err) if err.is_fatal() => return Err(err),
                 Err(_) => break,
             }
 
             let (item, remaining) = T::parse_with_context(input, context)?;
-            if input.input_len() == remaining.input_len() {
-                return Err(crate::error::ParseError::custom(
-                    "Separated0 item parser matched without consuming input",
-                ));
-            }
+            crate::collections::ensure_progress(input, remaining, "Separated0")?;
             items.push(item);
             input = remaining;
         }

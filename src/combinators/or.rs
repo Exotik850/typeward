@@ -109,6 +109,8 @@ where
     A: Parse<'a, I>,
     B: Parse<'a, I>,
 {
+    /// Tries `A` then `B`, preferring the error that advanced farthest into
+    /// the input. Fatal errors short-circuit the alternative and propagate.
     #[inline]
     fn parse_with_context(
         input: I,
@@ -116,8 +118,10 @@ where
     ) -> ParseResult<(Self, I)> {
         match A::parse_with_context(input, context) {
             Ok((a, rest)) => Ok((Or::Left(a), rest)),
+            Err(left_err) if left_err.is_fatal() => Err(left_err),
             Err(left_err) => match B::parse_with_context(input, context) {
                 Ok((b, rest)) => Ok((Or::Right(b), rest)),
+                Err(right_err) if right_err.is_fatal() => Err(right_err),
                 Err(right_err) => Err(left_err.farthest(right_err)),
             },
         }

@@ -38,6 +38,10 @@ where
         input: I,
         context: &mut crate::parse::ParseOffsetContext,
     ) -> crate::error::ParseResult<(Self, I)> {
+        const {
+            assert!(MIN <= MAX, "Repeat<T, MIN, MAX> requires MIN <= MAX");
+        }
+
         let mut items = Vec::new();
         let mut rest = input;
 
@@ -48,13 +52,14 @@ where
                     items.push(item);
                     rest = new_rest;
                 }
+                Err(err) if err.is_fatal() => return Err(err),
                 Err(_) => break,
             }
         }
 
         if items.len() < MIN {
             return Err(crate::error::ParseError::custom(format!(
-                "Expected at least {} items, found {}",
+                "expected at least {} items, found {}",
                 MIN,
                 items.len()
             )));
@@ -106,13 +111,15 @@ where
         input: I,
         context: &mut crate::parse::ParseOffsetContext,
     ) -> crate::prelude::ParseResult<(Self, I)> {
-        // repeatedly parse T until U succeeds, but do not consume the input for U
+        // Repeatedly parse T until U succeeds, without consuming input for U.
         let mut items = Vec::new();
         let mut rest = input;
 
         loop {
-            if let Ok((_, _)) = U::parse_with_context(rest, context) {
-                break;
+            match U::parse_with_context(rest, context) {
+                Ok(_) => break,
+                Err(err) if err.is_fatal() => return Err(err),
+                Err(_) => {}
             }
 
             match T::parse_with_context(rest, context) {
@@ -121,11 +128,8 @@ where
                     items.push(item);
                     rest = new_rest;
                 }
-                Err(e) => {
-                    return Err(crate::error::ParseError::custom(format!(
-                        "Expected T or U, but got error: {e}"
-                    )));
-                }
+                // Propagate T's error verbatim so callers keep span / root cause.
+                Err(err) => return Err(err),
             }
         }
         Ok((

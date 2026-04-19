@@ -15,22 +15,30 @@ where
         input: I,
         context: &mut crate::parse::ParseOffsetContext,
     ) -> crate::error::ParseResult<(Self, I)> {
-        let (value, rest) = S::parse_with_context(input, context)?;
+        // Lookahead first: do not execute `S` if `P` accepts the input.
+        // This avoids running both parsers' side effects (span scopes, owned
+        // buffers from streaming inputs) in the success path.
         if P::parse_with_context(input, context).is_ok() {
-            Err(crate::error::custom(format!(
-                "Expected Not<{}, {}> to fail, but it succeeded",
+            let preview = crate::error::preview_input(
+                input.display().as_ref(),
+                crate::error::DEFAULT_INPUT_PREVIEW,
+            );
+            return Err(crate::error::ParseError::custom(format!(
+                "expected `{}` but matched the forbidden pattern `{}` at '{}'",
                 std::any::type_name::<S>(),
-                std::any::type_name::<P>()
-            )))
-        } else {
-            Ok((
-                Not {
-                    value,
-                    _marker: std::marker::PhantomData,
-                },
-                rest,
-            ))
+                std::any::type_name::<P>(),
+                preview,
+            )));
         }
+
+        let (value, rest) = S::parse_with_context(input, context)?;
+        Ok((
+            Not {
+                value,
+                _marker: std::marker::PhantomData,
+            },
+            rest,
+        ))
     }
 }
 

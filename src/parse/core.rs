@@ -40,10 +40,13 @@ where
     I: Input<'a>,
     T: Parse<'a, I>,
 {
+    /// Recovers from recoverable parse failures. Fatal errors (I/O, invalid
+    /// UTF-8 in streaming sources, exceeded replay windows, etc.) propagate.
     #[inline]
     fn parse_with_context(input: I, context: &mut ParseOffsetContext) -> ParseResult<(Self, I)> {
         match T::parse_with_context(input, context) {
             Ok((value, remaining)) => Ok((Some(value), remaining)),
+            Err(err) if err.is_fatal() => Err(err),
             Err(_) => Ok((None, input)),
         }
     }
@@ -54,10 +57,14 @@ where
     I: Input<'a>,
     T: Parse<'a, I>,
 {
+    /// Captures recoverable parse failures as `Err(_)`. Fatal errors still
+    /// propagate as the outer `ParseResult::Err` so that they cannot be
+    /// silenced by downstream combinators.
     #[inline]
     fn parse_with_context(input: I, context: &mut ParseOffsetContext) -> ParseResult<(Self, I)> {
         match T::parse_with_context(input, context) {
             Ok((value, remaining)) => Ok((Ok(value), remaining)),
+            Err(err) if err.is_fatal() => Err(err),
             Err(err) => Ok((Err(err), input)),
         }
     }
@@ -76,10 +83,16 @@ macro_rules! parse_collection {
             fn parse_with_context(input: I, context: &mut ParseOffsetContext) -> ParseResult<(Self, I)> {
                 let mut items = Self::new();
                 let mut input = input;
-                while let Ok((item, remaining)) = T::parse_with_context(input, context) {
-                    crate::collections::ensure_progress(input, remaining, stringify!($ty))?;
-                    items.$push_fn(item);
-                    input = remaining;
+                loop {
+                    match T::parse_with_context(input, context) {
+                        Ok((item, remaining)) => {
+                            crate::collections::ensure_progress(input, remaining, stringify!($ty))?;
+                            items.$push_fn(item);
+                            input = remaining;
+                        }
+                        Err(err) if err.is_fatal() => return Err(err),
+                        Err(_) => break,
+                    }
                 }
                 Ok((items, input))
             }
@@ -258,10 +271,15 @@ mod tests {
 
     #[test]
     fn test_vec_parse_accumulates_all_successful_items() {
+        // Whitespace-separated items require a whitespace-tolerant element
+        // parser such as `Ws<i64>`; bare numeric parsers do not trim so that
+        // signed / unsigned parsers behave consistently.
         let input = "1 2 three 4";
         let mut context = ParseOffsetContext::new();
-        let (result, remaining) = Vec::<i64>::parse_with_context(input, &mut context).unwrap();
-        assert_eq!(result, vec![1, 2]);
+        let (result, remaining) =
+            Vec::<Ws<i64>>::parse_with_context(input, &mut context).unwrap();
+        let values: Vec<i64> = result.into_iter().map(Ws::into_inner).collect();
+        assert_eq!(values, vec![1, 2]);
         assert_eq!(remaining, " three 4");
     }
 
@@ -270,8 +288,13 @@ mod tests {
         let input = "3 1 4 1 5";
         let mut context = ParseOffsetContext::new();
         let (result, remaining) =
-            std::collections::BinaryHeap::<i64>::parse_with_context(input, &mut context).unwrap();
-        let sorted: Vec<_> = result.into_sorted_vec();
+            std::collections::BinaryHeap::<Ws<i64>>::parse_with_context(input, &mut context)
+                .unwrap();
+        let sorted: Vec<i64> = result
+            .into_sorted_vec()
+            .into_iter()
+            .map(Ws::into_inner)
+            .collect();
         assert_eq!(sorted, vec![1, 1, 3, 4, 5]);
         assert!(remaining.trim().is_empty());
     }
