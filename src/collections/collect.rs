@@ -22,6 +22,7 @@ where
     T: Parse<'a, I>,
     C: FromIterator<T>,
 {
+    #[inline]
     fn parse_with_context(
         input: I,
         context: &mut crate::parse::ParseOffsetContext,

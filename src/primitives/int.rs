@@ -9,6 +9,7 @@ macro_rules! parse_unsigned {
             where
                 I: Input<'a>,
             {
+                #[inline]
                 fn parse_with_context(
                     input: I,
                     context: &mut crate::parse::ParseOffsetContext,
@@ -44,6 +45,7 @@ macro_rules! parse_signed {
             where
                 I: Input<'a>,
             {
+                #[inline]
                 fn parse_with_context(
                     input: I,
                     context: &mut crate::parse::ParseOffsetContext,
@@ -87,6 +89,7 @@ macro_rules! parse_nonzero {
             where
                 I: Input<'a>,
             {
+                #[inline]
                 fn parse_with_context(
                     input: I,
                     context: &mut crate::parse::ParseOffsetContext,

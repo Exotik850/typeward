@@ -86,6 +86,7 @@ where
     E: Parse<'a, In>,
     I: Parse<'a, In>,
 {
+    #[inline]
     fn parse_with_context(
         input: In,
         context: &mut crate::parse::ParseOffsetContext,
@@ -107,6 +108,7 @@ where
     E: Parse<'a, In>,
     I: Parse<'a, In>,
 {
+    #[inline]
     fn parse_with_context(
         input: In,
         context: &mut crate::parse::ParseOffsetContext,

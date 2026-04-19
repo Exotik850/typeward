@@ -29,6 +29,7 @@ impl<'a, I> Parse<'a, I> for ()
 where
     I: Input<'a>,
 {
+    #[inline]
     fn parse_with_context(input: I, _context: &mut ParseOffsetContext) -> ParseResult<(Self, I)> {
         Ok(((), input))
     }
@@ -39,6 +40,7 @@ where
     I: Input<'a>,
     T: Parse<'a, I>,
 {
+    #[inline]
     fn parse_with_context(input: I, context: &mut ParseOffsetContext) -> ParseResult<(Self, I)> {
         match T::parse_with_context(input, context) {
             Ok((value, remaining)) => Ok((Some(value), remaining)),
@@ -56,6 +58,7 @@ macro_rules! parse_collection {
             I: Input<'a>,
             T: Parse<'a, I> $(+ $($bound +)*)?,
         {
+            #[inline]
             fn parse_with_context(input: I, context: &mut ParseOffsetContext) -> ParseResult<(Self, I)> {
                 let mut items = Self::new();
                 let mut input = input;
@@ -84,6 +87,7 @@ macro_rules! parse_wrapper_ctor {
         I: Input<'a>,
         T: Parse<'a, I> $($(+ $bound)*)?,
     {
+      #[inline]
       fn parse_with_context(
           input: I,
           context: &mut ParseOffsetContext,
@@ -118,6 +122,7 @@ macro_rules! parse_tuple {
             I: Input<'a>,
             $($ty: Parse<'a, I>),+
         {
+            #[inline]
             fn parse_with_context(
                 mut input: I,
                 context: &mut ParseOffsetContext,
@@ -154,6 +159,7 @@ where
     T: ToOwned + ?Sized + 'a,
     &'a T: Parse<'a, I>,
 {
+    #[inline]
     fn parse_with_context(input: I, context: &mut ParseOffsetContext) -> ParseResult<(Self, I)> {
         let (value, remaining) = <&'a T>::parse_with_context(input, context)?;
         Ok((Cow::Borrowed(value), remaining))
@@ -173,6 +179,7 @@ where
     I: Input<'a>,
     T: Parse<'a, I>,
 {
+    #[inline]
     fn parse_with_context(input: I, context: &mut ParseOffsetContext) -> ParseResult<(Self, I)> {
         let (value, remaining) = T::parse_with_context(input, context)?;
         Ok((Nested(Box::new(value)), remaining))

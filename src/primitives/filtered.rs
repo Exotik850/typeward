@@ -37,6 +37,7 @@ macro_rules! filter_str {
             I: $crate::input::Input<'a>,
             S: AsRef<str> + From<&'a str>,
         {
+            #[inline]
             fn parse_with_context(
                 input: I,
                 _context: &mut $crate::parse::ParseOffsetContext,
@@ -97,6 +98,7 @@ macro_rules! parse_filtered {
                 I: Input<'a>,
                 $ty: Parse<'a, I>,
             {
+                #[inline]
                 fn parse_with_context(
                     input: I,
                     context: &mut $crate::parse::ParseOffsetContext,

@@ -62,6 +62,7 @@ macro_rules! parse_float {
             where
                 I: Input<'a>,
             {
+                #[inline]
                 fn parse_with_context(
                     input: I,
                     _context: &mut crate::parse::ParseOffsetContext,

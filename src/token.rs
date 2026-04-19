@@ -47,6 +47,7 @@ where
     I: ParseOffsetInput<'a>,
     T: Token + Copy,
 {
+    #[inline]
     fn parse_with_context(
         input: I,
         context: &mut ParseOffsetContext,
@@ -69,6 +70,7 @@ impl<'a, I> Parse<'a, I> for char
 where
     I: ParseOffsetInput<'a>,
 {
+    #[inline]
     fn parse_with_context(
         input: I,
         context: &mut ParseOffsetContext,
@@ -87,6 +89,7 @@ where
     I: crate::input::Input<'a>,
     T: Parse<'a, I>,
 {
+    #[inline]
     fn parse_with_context(
         mut input: I,
         context: &mut ParseOffsetContext,

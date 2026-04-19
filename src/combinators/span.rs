@@ -65,6 +65,7 @@ where
     I: ParseOffsetInput<'a>,
     P: Parse<'a, I>,
 {
+    #[inline]
     fn parse_with_context(input: I, context: &mut ParseOffsetContext) -> ParseResult<(Self, I)> {
         with_parse_offset_scope_if_missing(context, input, |context| {
             let start = current_parse_offset(context, input);

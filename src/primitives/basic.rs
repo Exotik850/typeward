@@ -14,6 +14,7 @@ impl<'a, I> Parse<'a, I> for Rest<I>
 where
     I: Input<'a>,
 {
+    #[inline]
     fn parse_with_context(
         value: I,
         _context: &mut crate::parse::ParseOffsetContext,
@@ -46,6 +47,7 @@ impl<'a, I> Parse<'a, I> for Eof
 where
     I: Input<'a>,
 {
+    #[inline]
     fn parse_with_context(
         input: I,
         _context: &mut crate::parse::ParseOffsetContext,
@@ -69,6 +71,7 @@ impl<'a, I> Parse<'a, I> for Fail
 where
     I: Input<'a>,
 {
+    #[inline]
     fn parse_with_context(
         _: I,
         _context: &mut crate::parse::ParseOffsetContext,

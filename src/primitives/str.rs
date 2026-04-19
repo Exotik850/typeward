@@ -7,6 +7,7 @@ impl<'a, I> Parse<'a, I> for &'a str
 where
     I: Input<'a>,
 {
+    #[inline]
     fn parse_with_context(
         input: I,
         _context: &mut crate::parse::ParseOffsetContext,
@@ -33,6 +34,7 @@ impl<'a, I> Parse<'a, I> for String
 where
     I: Input<'a>,
 {
+    #[inline]
     fn parse_with_context(
         input: I,
         context: &mut crate::parse::ParseOffsetContext,
@@ -86,6 +88,7 @@ where
     T: Token,
     S: AsRef<str> + From<&'a str>,
 {
+    #[inline]
     fn parse_with_context(
         input: I,
         _context: &mut crate::parse::ParseOffsetContext,
