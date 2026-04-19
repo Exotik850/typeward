@@ -114,8 +114,10 @@ mod tests {
 
     #[test]
     fn span_wraps_successful_parse() {
-        let (spanned, rest) = Span::<i64>::parse("  -12x").unwrap();
-        assert_eq!(spanned.inner, -12);
+        let (spanned, rest) = Span::<Ws<i64>>::parse("  -12x").unwrap();
+        assert_eq!(spanned.inner.into_inner(), -12);
+        // Span covers the full input the parser consumed, including any
+        // whitespace trimmed by the wrapped `Ws<_>`.
         assert_eq!(spanned.span, 0..5);
         assert_eq!(rest, "x");
     }

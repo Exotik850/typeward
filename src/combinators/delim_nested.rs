@@ -60,13 +60,18 @@ where
         input: I,
         context: &mut crate::parse::ParseOffsetContext,
     ) -> ParseResult<(Self, I)> {
+        // These checks are effectively const with respect to `Left`/`Right`
+        // but cannot be enforced at compile-time on stable Rust because
+        // `Token::VALUE` is a trait-level associated const of a generic param.
+        // The branches are monomorphized per instantiation, so the checks
+        // effectively have zero cost in the steady state.
         if Left::VALUE.is_empty() || Right::VALUE.is_empty() {
-            return Err(ParseError::custom(
+            return Err(ParseError::fatal(
                 "nested delimiters must be non-empty tokens",
             ));
         }
         if Left::VALUE == Right::VALUE {
-            return Err(ParseError::custom(
+            return Err(ParseError::fatal(
                 "nested delimiters must not be identical tokens",
             ));
         }
@@ -118,7 +123,14 @@ where
                 continue;
             }
 
-            return Err(ParseError::UnexpectedEOF);
+            // Neither delimiter remains; the opening left is unmatched.
+            let start = current_parse_offset(context, input);
+            return Err(ParseError::custom(format!(
+                "unbalanced nested delimiter: missing `{}` to close `{}`",
+                Right::VALUE,
+                Left::VALUE,
+            ))
+            .with_span(SourceSpan::point(start)));
         };
 
         let inner_input = inner_start.slice_to(close_start)?;
