@@ -98,32 +98,29 @@ pub(crate) fn build_fields_parse_plan(
         .map(|index| format_ident!("{binding_prefix}_{index}"))
         .collect();
 
-    let parse_tokens = match field_plans.len() {
-        0 => {
-            quote! {
-                let __typeward_remaining = input;
-            }
+    let parse_tokens = if field_plans.len() == 0 {
+        quote! {
+            let __typeward_remaining = input;
         }
-        _ => {
-            let lifetime = &parse_generics.lifetime;
-            let input_ident = &parse_generics.input_ident;
-            let parser_type = parser_type_from_field_plans(&field_plans, crate_path);
-            let parsed_value = format_ident!("{binding_prefix}_parsed_value");
-            let parsed_binding_prefix = format!("{binding_prefix}_parsed_field");
-            let parsed_value_expr = quote!(#parsed_value);
-            let binding_setup_tokens = build_binding_transform_tokens(
-                &bindings,
-                &field_plans,
-                &parsed_value_expr,
-                crate_path,
-                &parsed_binding_prefix,
-            );
+    } else {
+        let lifetime = &parse_generics.lifetime;
+        let input_ident = &parse_generics.input_ident;
+        let parser_type = parser_type_from_field_plans(&field_plans, crate_path);
+        let parsed_value = format_ident!("{binding_prefix}_parsed_value");
+        let parsed_binding_prefix = format!("{binding_prefix}_parsed_field");
+        let parsed_value_expr = quote!(#parsed_value);
+        let binding_setup_tokens = build_binding_transform_tokens(
+            &bindings,
+            &field_plans,
+            &parsed_value_expr,
+            crate_path,
+            &parsed_binding_prefix,
+        );
 
-            quote! {
-                let (#parsed_value, __typeward_remaining) =
-                    <#parser_type as #crate_path::parse::Parse<#lifetime, #input_ident>>::parse_with_context(input, context)?;
-                #binding_setup_tokens
-            }
+        quote! {
+            let (#parsed_value, __typeward_remaining) =
+                <#parser_type as #crate_path::parse::Parse<#lifetime, #input_ident>>::parse_with_context(input, context)?;
+            #binding_setup_tokens
         }
     };
 
@@ -186,20 +183,17 @@ fn map_parsed_value(
     parser_ty: &Type,
     mapper: &Option<Expr>,
 ) -> TokenStream {
-    match mapper {
-        Some(mapper) => quote! {
-            let #binding = {
-                fn __typeward_apply_mapper<In, Out>(value: In, mapper: impl FnOnce(In) -> Out) -> Out {
-                    mapper(value)
-                }
+    if let Some(mapper) = mapper { quote! {
+        let #binding = {
+            fn __typeward_apply_mapper<In, Out>(value: In, mapper: impl FnOnce(In) -> Out) -> Out {
+                mapper(value)
+            }
 
-                __typeward_apply_mapper::<#parser_ty, _>(#parsed_binding, #mapper)
-            };
-        },
-        None => quote! {
-            let #binding = #parsed_binding;
-        },
-    }
+            __typeward_apply_mapper::<#parser_ty, _>(#parsed_binding, #mapper)
+        };
+    } } else { quote! {
+        let #binding = #parsed_binding;
+    } }
 }
 
 pub(crate) fn constructor(
@@ -207,10 +201,7 @@ pub(crate) fn constructor(
     shape: &FieldShape,
     bindings: &[Ident],
 ) -> TokenStream {
-    let ident = match prefix {
-        Some(variant) => quote!(Self::#variant),
-        None => quote!(Self),
-    };
+    let ident = if let Some(variant) = prefix { quote!(Self::#variant) } else { quote!(Self) };
 
     match shape {
         FieldShape::Unit => quote!(#ident),

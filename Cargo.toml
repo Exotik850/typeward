@@ -14,6 +14,9 @@ pastey = "0.2"
 stable-pattern = { version = "0.1", default-features = false }
 typeward-macros = { path = "crates/typeward-macros", optional = true, version = "0.1.0"}
 
+[dev-dependencies]
+criterion = "0.5"
+
 [features]
 default = ["arrays", "macros"]
 arrays = ["dep:array-util"]
@@ -22,6 +25,11 @@ macros = ["typeward-macros"]
 [[example]]
 name = "json"
 path = "examples/json.rs"
+
+[[bench]]
+name = "hot_paths"
+harness = false
+path = "benchmarks/hot_paths.rs"
 
 [workspace]
 members = ["crates/typeward-macros"]
