@@ -187,6 +187,17 @@ mod tests {
                 Ok(self.0.strip_prefix(prefix).map(Self))
             }
 
+            fn advance(self, bytes: usize) -> ParseResult<Self> {
+                if bytes > self.0.len() {
+                    return Err(crate::error::ParseError::custom("invalid input bounds"));
+                }
+                if !self.0.is_char_boundary(bytes) {
+                    return Err(crate::error::ParseError::custom("invalid UTF-8 boundary"));
+                }
+
+                Ok(Self(&self.0[bytes..]))
+            }
+
             fn find(self, needle: &str) -> ParseResult<Option<Self>> {
                 Ok(self.0.find(needle).map(|idx| Self(&self.0[idx..])))
             }

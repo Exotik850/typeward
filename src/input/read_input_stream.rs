@@ -393,6 +393,22 @@ where
         Ok(Some(self.with_start(end)))
     }
 
+    fn advance(self, bytes: usize) -> ParseResult<Self> {
+        let next = self.start.checked_add(bytes).ok_or_else(|| {
+            ParseError::fatal("invalid stream bounds while advancing input")
+        })?;
+
+        if let Some(bound) = self.end
+            && next > bound
+        {
+            return Err(ParseError::fatal(
+                "invalid stream bounds while advancing input",
+            ));
+        }
+
+        Ok(self.with_start(next))
+    }
+
     fn find(self, needle: &str) -> ParseResult<Option<Self>> {
         if self.start < self.stream.window_start.get() {
             return Err(ReadInputStream::<R, N>::replay_error());

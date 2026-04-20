@@ -40,6 +40,12 @@ pub trait Input<'a>: Copy + Sized {
     /// Attempts to strip a literal prefix and returns remaining input on success.
     fn strip_prefix(self, prefix: &str) -> ParseResult<Option<Self>>;
 
+    /// Advances the input by `bytes` and returns the remaining input.
+    ///
+    /// Implementations should return an error if `bytes` exceeds the remaining
+    /// input length or violates input encoding boundaries.
+    fn advance(self, bytes: usize) -> ParseResult<Self>;
+
     /// Finds the next occurrence of `needle` and returns input starting at that match.
     fn find(self, needle: &str) -> ParseResult<Option<Self>>;
 

@@ -151,6 +151,16 @@ impl<'a> Input<'a> for ReadInput<'a> {
         Ok(self.bytes.strip_prefix(prefix.as_bytes()).map(Self::new))
     }
 
+    fn advance(self, bytes: usize) -> ParseResult<Self> {
+        if bytes > self.bytes.len() {
+            return Err(crate::error::ParseError::fatal(
+                "invalid input bounds while advancing read input",
+            ));
+        }
+
+        Ok(Self::new(&self.bytes[bytes..]))
+    }
+
     fn find(self, needle: &str) -> ParseResult<Option<Self>> {
         let s = shared::utf8(self.bytes)?;
         Ok(s.find(needle).map(|idx| Self::new(&self.bytes[idx..])))

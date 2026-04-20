@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use super::{BorrowInput, Input, shared};
-use crate::error::ParseResult;
+use crate::error::{ParseError, ParseResult};
 use stable_pattern::Pattern;
 
 impl<'a> Input<'a> for &'a str {
@@ -23,6 +23,21 @@ impl<'a> Input<'a> for &'a str {
 
     fn strip_prefix(self, prefix: &str) -> ParseResult<Option<Self>> {
         Ok(self.strip_prefix(prefix))
+    }
+
+    fn advance(self, bytes: usize) -> ParseResult<Self> {
+        if bytes > self.len() {
+            return Err(ParseError::fatal(
+                "invalid input bounds while advancing string input",
+            ));
+        }
+        if !self.is_char_boundary(bytes) {
+            return Err(ParseError::fatal(
+                "invalid UTF-8 boundary while advancing string input",
+            ));
+        }
+
+        Ok(&self[bytes..])
     }
 
     fn find(self, needle: &str) -> ParseResult<Option<Self>> {
