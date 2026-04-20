@@ -1,66 +1,32 @@
 use crate::{error::ParseResult, input::Input, parse::Parse};
 
-fn scan_float_lexeme<'a, I>(input: I) -> ParseResult<Option<(String, I)>>
+#[inline]
+fn is_float_lexeme_char(ch: char) -> bool {
+    ch.is_ascii_digit() || matches!(ch, '+' | '-' | '.' | 'e' | 'E')
+}
+
+fn parse_float_partial_prefix<'a, I, F>(input: I) -> ParseResult<Option<(F, I)>>
 where
     I: Input<'a>,
+    F: fast_float2::FastFloat,
 {
-    let mut rest = input;
-    let mut lexeme = String::new();
+    let (candidate, scanned_rest) = input.take_while(is_float_lexeme_char)?;
 
-    if let Some((ch, next)) = rest.take_char()?
-        && matches!(ch, '+' | '-')
-    {
-        lexeme.push(ch);
-        rest = next;
+    let Ok((parsed, consumed)) = fast_float2::parse_partial::<F, _>(candidate.as_bytes()) else {
+        return Ok(None);
+    };
+
+    if consumed == 0 {
+        return Ok(None);
     }
 
-    let mut seen_mantissa_digit = false;
-    let mut seen_dot = false;
-    let mut seen_exp = false;
-    let mut seen_exp_digit = false;
-    let mut exp_sign_allowed = false;
-    let mut best_len = None;
-    let mut best_rest = None;
+    let rest = if consumed == candidate.len() {
+        scanned_rest
+    } else {
+        input.advance(consumed)?
+    };
 
-    while let Some((ch, next)) = rest.take_char()? {
-        let did_consume = if ch.is_ascii_digit() {
-            if seen_exp {
-                seen_exp_digit = true;
-            } else {
-                seen_mantissa_digit = true;
-            }
-            exp_sign_allowed = false;
-            true
-        } else if ch == '.' && !seen_dot && !seen_exp {
-            seen_dot = true;
-            true
-        } else if matches!(ch, 'e' | 'E') && !seen_exp && seen_mantissa_digit {
-            seen_exp = true;
-            exp_sign_allowed = true;
-            true
-        } else if matches!(ch, '+' | '-') && seen_exp && exp_sign_allowed {
-            exp_sign_allowed = false;
-            true
-        } else {
-            false
-        };
-
-        if !did_consume {
-            break;
-        }
-
-        lexeme.push(ch);
-        rest = next;
-        if seen_mantissa_digit && (!seen_exp || seen_exp_digit) {
-            best_len = Some(lexeme.len());
-            best_rest = Some(rest);
-        }
-    }
-
-    Ok(best_len.zip(best_rest).map(|(len, best_rest)| {
-        let matched = lexeme[..len].to_owned();
-        (matched, best_rest)
-    }))
+    Ok(Some((parsed, rest)))
 }
 
 macro_rules! parse_float {
@@ -75,20 +41,14 @@ macro_rules! parse_float {
                     input: I,
                     _context: &mut crate::parse::ParseOffsetContext,
                 ) -> ParseResult<(Self, I)> {
-                    let Some((lexeme, rest)) = scan_float_lexeme(input)? else {
+                    let Some((num, rest)) = parse_float_partial_prefix::<_, $ty>(input)? else {
                         return Err(crate::error::ParseError::custom(concat!(
                             "expected ",
                             stringify!($ty)
                         )));
                     };
 
-                    match lexeme.parse::<$ty>() {
-                        Ok(num) => Ok((num, rest)),
-                        Err(_) => Err(crate::error::ParseError::custom(concat!(
-                            "expected ",
-                            stringify!($ty)
-                        ))),
-                    }
+                    Ok((num, rest))
                 }
             }
         )*
@@ -131,5 +91,21 @@ mod tests {
         let (result, rest) = f64::parse(input).unwrap();
         assert!((result - (-250.0)).abs() < f64::EPSILON);
         assert_eq!(rest, "e rest");
+    }
+
+    #[test]
+    fn test_f64_parse_rejects_consecutive_signs_after_mantissa() {
+        let input = "1.5+-99";
+        let (result, rest) = f64::parse(input).unwrap();
+        assert!((result - 1.5).abs() < f64::EPSILON);
+        assert_eq!(rest, "+-99");
+    }
+
+    #[test]
+    fn test_f64_parse_invalid_exponent_suffix_keeps_marker() {
+        let input = "12.5e+ rest";
+        let (result, rest) = f64::parse(input).unwrap();
+        assert!((result - 12.5).abs() < f64::EPSILON);
+        assert_eq!(rest, "e+ rest");
     }
 }
