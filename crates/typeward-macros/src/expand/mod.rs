@@ -104,9 +104,29 @@ fn build_impl_header(
     let input_ident = &parse_generics.input_ident;
     let where_clause = impl_generics.make_where_clause();
     where_clause.predicates.push(syn::parse_quote!(
-        #input_ident: #crate_path::input::Input<#lifetime>
+        #input_ident: #crate_path::parse::ParseOffsetInput<#lifetime>
     ));
+
+    // Add explicit parser bounds so parser field types can propagate any
+    // additional input requirements (for example ParseOffsetInput). Skip
+    // directly self-referential parser types to avoid recursive trait-solver
+    // cycles for recursive derives.
+    let self_ident = &input.ident;
+    let generic_type_params = generic_type_param_names(&input.generics);
+    let mut seen_parse_bounds = HashSet::new();
     for ty in field_types {
+        if type_mentions_name_or_self(ty, self_ident) {
+            continue;
+        }
+        if !type_mentions_any_name(ty, &generic_type_params) {
+            continue;
+        }
+
+        let parse_bound_key = quote!(#ty).to_string();
+        if !seen_parse_bounds.insert(parse_bound_key) {
+            continue;
+        }
+
         where_clause.predicates.push(syn::parse_quote!(
             #ty: #crate_path::parse::Parse<#lifetime, #input_ident>
         ));
@@ -120,6 +140,32 @@ fn build_impl_header(
         ty_generics: quote!(#ty_generics_tokens),
         where_clause: quote!(#where_clause_tokens),
     }
+}
+
+fn generic_type_param_names(generics: &Generics) -> HashSet<String> {
+    generics
+        .type_params()
+        .map(|type_param| type_param.ident.to_string())
+        .collect()
+}
+
+fn type_mentions_any_name(ty: &syn::Type, names: &HashSet<String>) -> bool {
+    if names.is_empty() {
+        return false;
+    }
+
+    quote!(#ty)
+        .to_string()
+        .split(|ch: char| !(ch.is_ascii_alphanumeric() || ch == '_'))
+        .any(|segment| !segment.is_empty() && names.contains(segment))
+}
+
+fn type_mentions_name_or_self(ty: &syn::Type, name: &Ident) -> bool {
+    let target = name.to_string();
+    quote!(#ty)
+        .to_string()
+        .split(|ch: char| !(ch.is_ascii_alphanumeric() || ch == '_'))
+        .any(|segment| segment == target || segment == "Self")
 }
 
 fn unique_name(
