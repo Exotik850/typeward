@@ -54,7 +54,6 @@ where
     ) -> ParseResult<(Self, I)> {
         let (value, remaining) = A::parse_with_context(input, context)?;
         let parsed = input.slice_to(remaining)?;
-        dbg!(parsed.display());
         B::parse_with_context(parsed, context)?;
         Ok((AndIs::new(value), remaining))
     }
@@ -81,7 +80,7 @@ mod tests {
     #[test]
     fn test_and_is_fails() {
         let input = "abc123";
-        let result = dbg!(AndIs::<&str, AlphaStr>::parse(input));
+        let result = AndIs::<&str, AlphaStr>::parse(input);
         assert!(result.is_err());
     }
 }

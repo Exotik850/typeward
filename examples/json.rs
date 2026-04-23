@@ -88,9 +88,9 @@ mod tests {
         assert_eq!(parse_json("true").unwrap(), JsonValue::Bool(Ws::new(true)));
         assert_eq!(parse_json("-12.5e2").unwrap(), JsonValue::Number(Ws::new(-1250.0)));
         assert_eq!(
-            parse_json("\"hello world\"").unwrap(),
-            JsonValue::String(JsonString::new("hello world".to_string()))
-        );
+            parse_json("\"hello world\"").unwrap().as_str(),
+            Some("hello world")
+        ); 
     }
 
     #[test]

@@ -14,6 +14,10 @@ impl<T> Ws<T> {
     pub fn inner(&self) -> &T {
         &self.0
     }
+
+    pub fn new(value: T) -> Self {
+        Self(value)
+    }
 }
 
 impl<T> std::ops::Deref for Ws<T> {

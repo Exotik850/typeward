@@ -32,4 +32,4 @@ harness = false
 path = "benchmarks/hot_paths.rs"
 
 [workspace]
-members = ["crates/typeward-macros"]
+members = ["crates/typeward-macros", "examples/json.rs"]
