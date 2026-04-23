@@ -11,7 +11,7 @@ pub mod ws;
 pub mod prelude {
     pub use super::and::And;
     pub use super::delim_nested::{Braced, Bracketed, DelimNested, Parenthesized};
-    pub use super::delimited::{Delimited, DelimitedExact};
+    pub use super::delimited::{Delimited, DelimitedExact, Padded, PaddedExact};
     pub use super::not::Not;
     pub use super::or::{Either, Or};
     pub use super::peek::Peek;

@@ -25,6 +25,8 @@ pub struct Delimited<S, E, I> {
     pub inner: I,
 }
 
+pub type Padded<E, I> = Delimited<E, E, I>;
+
 /// A parser that matches content wrapped between start and end tokens without
 /// automatic whitespace trimming.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -33,6 +35,8 @@ pub struct DelimitedExact<S, E, I> {
     pub end: E,
     pub inner: I,
 }
+
+pub type PaddedExact<E, I> = DelimitedExact<E, E, I>;
 
 impl<S, E, I> DelimitedExact<S, E, I> {
     pub fn map_inner<J>(self, f: impl FnOnce(I) -> J) -> DelimitedExact<S, E, J> {
