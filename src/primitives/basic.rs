@@ -3,6 +3,7 @@ use std::borrow::Cow;
 use crate::{input::Input, parse::Parse};
 
 pub type Empty = ();
+pub type Success = ();
 
 /// A parser that always succeeds and consumes the rest of the input.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]

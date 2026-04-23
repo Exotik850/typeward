@@ -20,5 +20,5 @@ pub mod prelude {
     pub use super::separated::{CommaSeparated, CommaSeparated0, Separated, Separated0};
     pub use super::span::{Span, SpanExt};
     pub use super::ws::{Ws, WsExt};
-    pub use super::ignore::{Ignore, Forget};
+    pub use super::ignore::{Ignore, Forget, Preceded, Terminated};
 }

@@ -129,6 +129,7 @@ where
 
 pub type TakeTillTokenStr<'a, T> = TakeTillToken<T, &'a str>;
 pub type TakeTillTokenCow<'a, T> = TakeTillToken<T, Cow<'a, str>>;
+pub type TakeTillTokenString<T> = TakeTillToken<T, String>;
 
 #[cfg(test)]
 mod tests {
