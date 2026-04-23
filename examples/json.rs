@@ -1,21 +1,37 @@
-use std::{collections::BTreeMap, str::FromStr};
+use std::collections::BTreeMap;
 use typeward::prelude::*;
 
-#[derive(Debug, Clone, PartialEq)]
+type JsonString = DelimitedExact<Ws<DoubleQuote>, DoubleQuote, TakeTillToken<DoubleQuote>>;
+type JsonMember = and!(JsonString, Ws<Colon>, JsonValue);
+type JsonObject = Delimited<Ws<LBrace>, Ws<RBrace>, Separated0<JsonMember, Ws<Comma>>>;
+
+#[derive(Debug, Clone, PartialEq, Parse)]
 pub enum JsonValue {
-    Null,
-    Bool(bool),
-    Number(f64),
-    String(String),
+    Null(Ignore<Ws<KwNull>>),
+    Bool(Ws<bool>),
+    Number(Ws<f64>),
+    String(JsonString),
     Array(Vec<JsonValue>),
-    Object(BTreeMap<String, JsonValue>),
+    Object(
+        #[parse(from(JsonObject, object_to_map))]
+        BTreeMap<String, JsonValue>
+    ),
+}
+
+fn object_to_map(object: JsonObject) -> BTreeMap<String, JsonValue> {
+    let mut map = BTreeMap::new();
+    for member in object.inner.into_items() {
+        let (key, _colon, value) = unpack_and!(member, (JsonString, Ws<Colon>, JsonValue));
+        map.insert(key.inner.into_inner(), value);
+    }
+    map
 }
 
 impl JsonValue {
     #[must_use]
     pub fn as_bool(&self) -> Option<bool> {
         match self {
-            Self::Bool(value) => Some(*value),
+            Self::Bool(value) => Some(*value.inner()),
             _ => None,
         }
     }
@@ -23,7 +39,7 @@ impl JsonValue {
     #[must_use]
     pub fn as_f64(&self) -> Option<f64> {
         match self {
-            Self::Number(value) => Some(*value),
+            Self::Number(value) => Some(*value.inner()),
             _ => None,
         }
     }
@@ -31,7 +47,7 @@ impl JsonValue {
     #[must_use]
     pub fn as_str(&self) -> Option<&str> {
         match self {
-            Self::String(value) => Some(value),
+            Self::String(value) => Some(value.inner()),
             _ => None,
         }
     }
@@ -62,68 +78,18 @@ pub fn parse_json(input: &str) -> ParseResult<JsonValue> {
     parse_complete::<JsonValue>(input)
 }
 
-impl FromStr for JsonValue {
-    type Err = ParseError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        parse_json(s)
-    }
-}
-
-type JsonString = DelimitedExact<Ws<DoubleQuote>, DoubleQuote, TakeTillToken<DoubleQuote>>;
-type JsonMember = and!(JsonString, Ws<Colon>, JsonValue);
-type JsonArray = Delimited<Ws<LBracket>, Ws<RBracket>, Separated0<JsonValue, Ws<Comma>>>;
-type JsonObject = Delimited<Ws<LBrace>, Ws<RBrace>, Separated0<JsonMember, Ws<Comma>>>;
-type JsonParser = or!(
-    Ws<KwNull>,
-    Ws<bool>,
-    Ws<f64>,
-    JsonString,
-    JsonArray,
-    JsonObject
-);
-
-impl<'a> Parse<'a> for JsonValue {
-    fn parse_with_context(
-        input: &'a str,
-        context: &mut typeward::parse::ParseOffsetContext,
-    ) -> ParseResult<(Self, &'a str)> {
-        let (parsed, rest) = JsonParser::parse_with_context(input, context)?;
-
-        let value = or_match!(
-            parsed,
-            _null => JsonValue::Null,
-            boolean => JsonValue::Bool(boolean.into_inner()),
-            number => JsonValue::Number(number.into_inner()),
-            string => JsonValue::String(string.inner.into_inner()),
-            array => JsonValue::Array(array.inner.into_items()),
-            object => {
-                let mut map = BTreeMap::new();
-                for member in object.inner.into_items() {
-                    let (key, _colon, value) =
-                        unpack_and!(member, (JsonString, Ws<Colon>, JsonValue));
-                    map.insert(key.inner.into_inner(), value);
-                }
-                JsonValue::Object(map)
-            },
-        );
-
-        Ok((value, rest))
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn parse_scalar_values() {
-        assert_eq!(parse_json("null").unwrap(), JsonValue::Null);
-        assert_eq!(parse_json("true").unwrap(), JsonValue::Bool(true));
-        assert_eq!(parse_json("-12.5e2").unwrap(), JsonValue::Number(-1250.0));
+        assert_eq!(parse_json("null").unwrap(), JsonValue::Null(Ignore::new()));
+        assert_eq!(parse_json("true").unwrap(), JsonValue::Bool(Ws::new(true)));
+        assert_eq!(parse_json("-12.5e2").unwrap(), JsonValue::Number(Ws::new(-1250.0)));
         assert_eq!(
             parse_json("\"hello world\"").unwrap(),
-            JsonValue::String("hello world".to_string())
+            JsonValue::String(JsonString::new("hello world".to_string()))
         );
     }
 
