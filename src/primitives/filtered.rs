@@ -71,7 +71,7 @@ macro_rules! filter_str {
     };
 }
 
-filter_str!(Alpha, char::is_alphabetic);
+filter_str!(Alpha, |c: char| c.is_ascii_alphabetic());
 filter_str!(Digit, |c: char| c.is_ascii_digit());
 filter_str!(AlphaNum, char::is_alphanumeric);
 filter_str!(Identifier, |c: char| c.is_alphanumeric() || c == '_');
@@ -132,3 +132,63 @@ parse_filtered!(Negative, |n| n < 0, i8, i16, i32, i64, i128, isize);
 parse_filtered!(NonNegative, |n| n >= 0, i8, i16, i32, i64, i128, isize);
 parse_filtered!(NonPositive, |n| n <= 0, i8, i16, i32, i64, i128, isize);
 parse_filtered!(NonZeroFloat, |n| n != 0.0, f32, f64);
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_positive() {
+        let result = Positive::<i32>::parse("5");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_negative() {
+        let result = Negative::<i32>::parse("-5");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_non_negative() {
+        let result = NonNegative::<i32>::parse("5");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_non_positive() {
+        let result = NonPositive::<i32>::parse("-5");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_non_zero_float() {
+        let result = NonZeroFloat::<f32>::parse("5.0");
+        assert!(result.is_ok());
+    }
+
+    // is error tests 
+
+    #[test]
+    fn test_positive_error() {
+        let result = Positive::<i32>::parse("-5");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_negative_error() {
+        let result = Negative::<i32>::parse("5");
+        assert!(result.is_err());
+    }
+
+    // string tests 
+
+    #[test]
+    fn test_alpha() {
+        let result = AlphaStr::parse("abc");
+        assert!(result.is_ok());
+        let result = AlphaStr::parse("abc123");
+        assert!(result.is_err());
+    }
+}
