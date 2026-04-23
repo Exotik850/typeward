@@ -8,6 +8,7 @@ pub mod separated;
 pub mod span;
 pub mod ws;
 pub mod ignore;
+pub mod and_is;
 
 pub mod prelude {
     pub use super::and::And;
