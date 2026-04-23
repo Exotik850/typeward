@@ -17,5 +17,5 @@ pub mod prelude {
     pub use super::peek::Peek;
     pub use super::separated::{CommaSeparated, CommaSeparated0, Separated, Separated0};
     pub use super::span::{Span, SpanExt};
-    pub use super::ws::Ws;
+    pub use super::ws::{Ws, WsExt};
 }

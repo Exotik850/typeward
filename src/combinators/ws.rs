@@ -1,4 +1,4 @@
-use crate::{error::ParseResult, parse::Parse};
+use crate::{error::ParseResult, input::Input, parse::Parse};
 
 /// A wrapper parser that trims leading whitespace before parsing `T`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Default, Copy)]
@@ -43,6 +43,22 @@ where
         let (value, rest) = T::parse_with_context(input.trim_start(), context)?;
         Ok((Self(value), rest))
     }
+}
+
+pub trait WsExt: Sized {
+    type Whitespaced;
+
+    fn parse_ws<'a, I>(input: I) -> ParseResult<(Self::Whitespaced, I)>
+    where
+        I: Input<'a>,
+        Self::Whitespaced: Parse<'a, I>,
+    {
+        Self::Whitespaced::parse(input)
+    }
+}
+
+impl<T> WsExt for T {
+    type Whitespaced = Ws<T>;
 }
 
 #[cfg(test)]
