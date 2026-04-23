@@ -7,6 +7,7 @@ pub mod peek;
 pub mod separated;
 pub mod span;
 pub mod ws;
+pub mod ignore;
 
 pub mod prelude {
     pub use super::and::And;
@@ -18,4 +19,5 @@ pub mod prelude {
     pub use super::separated::{CommaSeparated, CommaSeparated0, Separated, Separated0};
     pub use super::span::{Span, SpanExt};
     pub use super::ws::{Ws, WsExt};
+    pub use super::ignore::{Ignore, Forget};
 }
