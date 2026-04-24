@@ -15,26 +15,21 @@ where
         input: I,
         context: &mut crate::parse::ParseOffsetContext,
     ) -> crate::error::ParseResult<(Self, I)> {
-        // Lookahead first: do not execute `S` if `P` accepts the input.
-        // This avoids running both parsers' side effects (span scopes, owned
-        // buffers from streaming inputs) in the success path.
-        let res = P::parse_with_context(input, context);
-        let recoverable = match res {
-            Ok(_) => true,
-            Err(e) if !e.is_fatal() => true,
-            Err(e) => return Err(e),
-        };
-        if recoverable {
-            let preview = crate::error::preview_input(
-                input.display().as_ref(),
-                crate::error::DEFAULT_INPUT_PREVIEW,
-            );
-            return Err(crate::error::ParseError::custom(format!(
-                "expected `{}` but matched the forbidden pattern `{}` at '{}'",
-                std::any::type_name::<S>(),
-                std::any::type_name::<P>(),
-                preview,
-            )));
+        match P::parse_with_context(input, context) {
+            Ok(_) => {
+                let preview = crate::error::preview_input(
+                    input.display().as_ref(),
+                    crate::error::DEFAULT_INPUT_PREVIEW,
+                );
+                return Err(crate::error::ParseError::custom(format!(
+                    "expected `{}` but matched the forbidden pattern `{}` at '{}'",
+                    std::any::type_name::<S>(),
+                    std::any::type_name::<P>(),
+                    preview,
+                )));
+            }
+            Err(err) if err.is_fatal() => return Err(err),
+            Err(_) => {}
         }
 
         let (value, rest) = S::parse_with_context(input, context)?;
@@ -66,5 +61,16 @@ mod tests {
         let input = "123";
         let err = Not::<AlphaNumString, i64>::parse(input);
         assert!(err.is_err());
+    }
+
+    #[test]
+    fn test_not_propagates_fatal_lookahead_errors() {
+        type Parser<'a> = Not<crate::primitives::basic::Rest<&'a [u8]>, i64>;
+
+        let bytes: &[u8] = &[0xFF, b'a'];
+        let err = Parser::parse(bytes).unwrap_err();
+
+        assert!(err.is_fatal());
+        assert!(err.to_string().contains("invalid UTF-8 input"));
     }
 }
