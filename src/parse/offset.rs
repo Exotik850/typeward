@@ -13,6 +13,26 @@ impl ParseOffsetAnchor {
     pub const fn new(start: usize, len: usize) -> Self {
         Self { start, len }
     }
+
+    #[must_use]
+    pub const fn start(self) -> usize {
+        self.start
+    }
+
+    #[must_use]
+    pub const fn len(self) -> usize {
+        self.len
+    }
+
+    #[must_use]
+    pub const fn is_empty(self) -> bool {
+        self.len == 0
+    }
+
+    #[must_use]
+    pub const fn end(self) -> usize {
+        self.start.saturating_add(self.len)
+    }
 }
 
 /// Input support required for offset tracking through parse context.

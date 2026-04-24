@@ -1,4 +1,7 @@
-use crate::{error::ParseResult, input::Input, parse::Parse};
+use crate::{
+    error::{ParseResult, SourceSpan},
+    parse::{Parse, ParseOffsetInput, current_parse_offset},
+};
 
 pub mod basic;
 pub mod filtered;
@@ -14,25 +17,27 @@ pub mod prelude {
 
 impl<'a, I> Parse<'a, I> for bool
 where
-    I: Input<'a>,
+    I: ParseOffsetInput<'a>,
 {
     #[inline]
     fn parse_with_context(
         input: I,
-        _context: &mut crate::parse::ParseOffsetContext,
+        context: &mut crate::parse::ParseOffsetContext,
     ) -> ParseResult<(Self, I)> {
         if let Some(rest) = input.strip_prefix("true")? {
             Ok((true, rest))
         } else if let Some(rest) = input.strip_prefix("false")? {
             Ok((false, rest))
         } else {
+            let start = current_parse_offset(context, input);
             let preview = crate::error::preview_input(
                 input.display().as_ref(),
                 crate::error::DEFAULT_INPUT_PREVIEW,
             );
             Err(crate::error::ParseError::custom(format!(
                 "expected 'true' or 'false', found '{preview}'"
-            )))
+            ))
+            .with_span(SourceSpan::point(start)))
         }
     }
 }
@@ -60,7 +65,7 @@ mod tests {
     #[test]
     fn test_bool_parse_invalid() {
         let input = "yes rest";
-        let result = bool::parse(input);
-        assert!(result.is_err());
+        let err = bool::parse(input).unwrap_err();
+        assert_eq!(err.span(), Some(SourceSpan::point(0)));
     }
 }

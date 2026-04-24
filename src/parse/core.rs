@@ -1,4 +1,4 @@
-use super::ParseOffsetContext;
+use super::{ParseOffsetContext, ParseOffsetInput, with_parse_offset_scope};
 use crate::error::{ParseError, ParseResult};
 use crate::input::{BorrowInput, Input};
 use std::borrow::Cow;
@@ -16,9 +16,14 @@ pub trait Parse<'a, I: Input<'a> = &'a str>: Sized {
     /// Parse a value from the input.
     ///
     /// Returns the parsed value and the remaining unconsumed input.
-    fn parse(input: I) -> ParseResult<(Self, I)> {
+    fn parse(input: I) -> ParseResult<(Self, I)>
+    where
+        I: ParseOffsetInput<'a>,
+    {
         let mut context = ParseOffsetContext::new();
-        Self::parse_with_context(input, &mut context)
+        with_parse_offset_scope(&mut context, input, |context| {
+            Self::parse_with_context(input, context)
+        })
     }
 
     /// Parse a value from the input using an explicit offset context.
@@ -255,8 +260,9 @@ where
 mod tests {
     use super::*;
     use crate::combinators::ws::Ws;
-    use crate::input::Input;
+    use crate::error::SourceSpan;
     use crate::lit_token;
+    use crate::literals::KwNull;
 
     lit_token!(HelloParser, "hello");
 
@@ -326,6 +332,13 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_tracks_error_offset() {
+        type Parser = crate::and!(Ws<i64>, Ws<KwNull>);
+        let err = Parser::parse("42 nope").unwrap_err();
+        assert_eq!(err.span(), Some(SourceSpan::point(3)));
+    }
+
+    #[test]
     fn test_nested_parses_recursive() {
         struct Recursive {
             value: Ws<i64>,
@@ -334,7 +347,7 @@ mod tests {
 
         impl<'a, I> Parse<'a, I> for Recursive
         where
-            I: Input<'a>,
+            I: crate::parse::ParseOffsetInput<'a>,
         {
             fn parse_with_context(
                 input: I,

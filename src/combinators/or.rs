@@ -168,6 +168,21 @@ mod tests {
 
     use super::*;
 
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    struct UnspannedError;
+
+    impl<'a, I> Parse<'a, I> for UnspannedError
+    where
+        I: crate::input::Input<'a>,
+    {
+        fn parse_with_context(
+            _input: I,
+            _context: &mut crate::parse::ParseOffsetContext,
+        ) -> crate::error::ParseResult<(Self, I)> {
+            Err(crate::error::ParseError::custom("unspanned"))
+        }
+    }
+
     #[test]
     fn test_alt() {
         let input = "42";
@@ -286,7 +301,7 @@ mod tests {
 
     #[test]
     fn test_alt_error_keeps_first_when_second_is_unspanned() {
-        type AltType = or!(KwNull, i64);
+        type AltType = or!(KwNull, UnspannedError);
         let err = parse_complete::<AltType>("abc").unwrap_err();
 
         assert_eq!(err.span(), Some(crate::error::SourceSpan::point(0)));

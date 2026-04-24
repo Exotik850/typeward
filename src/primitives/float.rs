@@ -1,4 +1,8 @@
-use crate::{error::ParseResult, input::Input, parse::Parse};
+use crate::{
+    error::{ParseResult, SourceSpan},
+    input::Input,
+    parse::{Parse, ParseOffsetInput, current_parse_offset},
+};
 
 #[inline]
 fn is_float_lexeme_char(ch: char) -> bool {
@@ -34,18 +38,20 @@ macro_rules! parse_float {
         $(
             impl<'a, I> Parse<'a, I> for $ty
             where
-                I: Input<'a>,
+                I: ParseOffsetInput<'a>,
             {
                 #[inline]
                 fn parse_with_context(
                     input: I,
-                    _context: &mut crate::parse::ParseOffsetContext,
+                    context: &mut crate::parse::ParseOffsetContext,
                 ) -> ParseResult<(Self, I)> {
                     let Some((num, rest)) = parse_float_partial_prefix::<_, $ty>(input)? else {
+                        let start = current_parse_offset(context, input);
                         return Err(crate::error::ParseError::custom(concat!(
                             "expected ",
                             stringify!($ty)
-                        )));
+                        ))
+                        .with_span(SourceSpan::point(start)));
                     };
 
                     Ok((num, rest))
@@ -107,5 +113,11 @@ mod tests {
         let (result, rest) = f64::parse(input).unwrap();
         assert!((result - 12.5).abs() < f64::EPSILON);
         assert_eq!(rest, "e+ rest");
+    }
+
+    #[test]
+    fn test_f64_parse_invalid_has_span() {
+        let err = f64::parse("nope").unwrap_err();
+        assert_eq!(err.span(), Some(SourceSpan::point(0)));
     }
 }

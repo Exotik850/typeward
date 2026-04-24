@@ -2,35 +2,39 @@ use std::borrow::Cow;
 
 use crate::token::Token;
 use crate::{
-    error::ParseResult,
+    error::{ParseResult, SourceSpan},
     input::{BorrowInput, FromInputStr, Input},
-    parse::Parse,
+    parse::{Parse, ParseOffsetInput, current_parse_offset},
 };
 
 impl<'a, I> Parse<'a, I> for &'a str
 where
-    I: BorrowInput<'a>,
+    I: BorrowInput<'a> + ParseOffsetInput<'a>,
 {
     #[inline]
     fn parse_with_context(
         input: I,
-        _context: &mut crate::parse::ParseOffsetContext,
+        context: &mut crate::parse::ParseOffsetContext,
     ) -> ParseResult<(Self, I)> {
         if input.is_empty() {
-            return Err(crate::error::ParseError::custom(
-                "expected string, found end of input",
-            ));
+            let start = current_parse_offset(context, input);
+            return Err(
+                crate::error::ParseError::custom("expected string, found end of input")
+                    .with_span(SourceSpan::point(start)),
+            );
         }
 
         let (token, rest) = input.take_while_borrowed(|c: char| !c.is_whitespace())?;
         if token.is_empty() {
+            let start = current_parse_offset(context, input);
             let preview = crate::error::preview_input(
                 input.display().as_ref(),
                 crate::error::DEFAULT_INPUT_PREVIEW,
             );
             return Err(crate::error::ParseError::custom(format!(
                 "expected string, found '{preview}'"
-            )));
+            ))
+            .with_span(SourceSpan::point(start)));
         }
 
         Ok((token, rest))
@@ -39,28 +43,32 @@ where
 
 impl<'a, I> Parse<'a, I> for String
 where
-    I: Input<'a>,
+    I: ParseOffsetInput<'a>,
 {
     #[inline]
     fn parse_with_context(
         input: I,
-        _context: &mut crate::parse::ParseOffsetContext,
+        context: &mut crate::parse::ParseOffsetContext,
     ) -> ParseResult<(Self, I)> {
         if input.is_empty() {
-            return Err(crate::error::ParseError::custom(
-                "expected string, found end of input",
-            ));
+            let start = current_parse_offset(context, input);
+            return Err(
+                crate::error::ParseError::custom("expected string, found end of input")
+                    .with_span(SourceSpan::point(start)),
+            );
         }
 
         let (token, rest) = input.take_while(|c: char| !c.is_whitespace())?;
         if token.is_empty() {
+            let start = current_parse_offset(context, input);
             let preview = crate::error::preview_input(
                 input.display().as_ref(),
                 crate::error::DEFAULT_INPUT_PREVIEW,
             );
             return Err(crate::error::ParseError::custom(format!(
                 "expected string, found '{preview}'"
-            )));
+            ))
+            .with_span(SourceSpan::point(start)));
         }
 
         Ok((token.into_owned(), rest))
@@ -238,6 +246,23 @@ mod tests {
                     .map_or(self.0.len(), |(start, _)| start);
                 let matched = self.0[..idx].to_owned();
                 Ok((Cow::Owned(matched), Self(&self.0[idx..])))
+            }
+        }
+
+        impl<'a> crate::parse::ParseOffsetInput<'a> for StreamingStub<'a> {
+            fn parse_offset_anchor(self) -> crate::parse::ParseOffsetAnchor {
+                crate::parse::ParseOffsetAnchor::new(self.0.as_ptr() as usize, self.0.len())
+            }
+
+            fn parse_offset_from(self, root: crate::parse::ParseOffsetAnchor) -> Option<usize> {
+                let start = self.0.as_ptr() as usize;
+                let end = start.saturating_add(self.0.len());
+
+                if start < root.start() || end > root.end() {
+                    return None;
+                }
+
+                Some(start.saturating_sub(root.start()))
             }
         }
 

@@ -1,4 +1,3 @@
-use crate::{error::ParseResult, input::Input, parse::Parse};
 use std::borrow::Cow;
 
 #[macro_export]
@@ -34,16 +33,18 @@ macro_rules! filter_str {
 
         impl<'a, I, S> $crate::parse::Parse<'a, I> for $name<S>
         where
-            I: $crate::input::Input<'a>,
+            I: $crate::parse::ParseOffsetInput<'a>,
             S: AsRef<str> + $crate::input::FromInputStr<'a, I>,
         {
             #[inline]
             fn parse_with_context(
                 input: I,
-                _context: &mut $crate::parse::ParseOffsetContext,
+                context: &mut $crate::parse::ParseOffsetContext,
             ) -> $crate::error::ParseResult<(Self, I)> {
                 let (s, rest) = input.take_while($filter)?;
                 if s.is_empty() {
+                    let (position, _) =
+                        <$crate::combinators::span::Span<()> as $crate::parse::Parse<'a, I>>::parse_with_context(input, context)?;
                     let preview = $crate::error::preview_input(
                         input.display().as_ref(),
                         $crate::error::DEFAULT_INPUT_PREVIEW,
@@ -52,7 +53,8 @@ macro_rules! filter_str {
                         "expected {}, found '{}'",
                         stringify!($name),
                         preview
-                    )));
+                    ))
+                    .with_span(position.span));
                 }
                 Ok((
                     $name {
@@ -102,23 +104,26 @@ macro_rules! parse_filtered {
         #[derive(Debug, PartialEq, Eq, Clone, Hash, Default, PartialOrd, Ord)]
         pub struct $name<T>(pub T);
         $(
-            impl<'a, I> Parse<'a, I> for $name<$ty>
+            impl<'a, I> $crate::parse::Parse<'a, I> for $name<$ty>
             where
-                I: Input<'a>,
-                $ty: Parse<'a, I>,
+                I: $crate::parse::ParseOffsetInput<'a>,
+                $ty: $crate::parse::Parse<'a, I>,
             {
                 #[inline]
                 fn parse_with_context(
                     input: I,
                     context: &mut $crate::parse::ParseOffsetContext,
-                ) -> ParseResult<(Self, I)> {
-                    let (result, rest) = <$ty>::parse_with_context(input, context)?;
+                ) -> $crate::error::ParseResult<(Self, I)> {
+                    let (spanned, rest) =
+                        <$crate::combinators::span::Span<$ty> as $crate::parse::Parse<'a, I>>::parse_with_context(input, context)?;
+                    let (result, span) = spanned.into_parts();
                     if !$filter(result) {
                         return Err($crate::error::ParseError::custom(format!(
                             "expected {}, found '{}'",
                             stringify!($name),
                             result
-                        )));
+                        ))
+                        .with_span(span));
                     }
                     Ok(($name(result), rest))
                 }
@@ -136,6 +141,7 @@ parse_filtered!(NonZeroFloat, |n| n != 0.0, f32, f64);
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::parse::Parse;
 
     #[test]
     fn test_positive() {
