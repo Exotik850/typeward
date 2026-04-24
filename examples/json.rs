@@ -3,6 +3,7 @@ use typeward::prelude::*;
 
 type JsonString = DelimitedExact<Ws<DoubleQuote>, DoubleQuote, TakeTillToken<DoubleQuote>>;
 type JsonMember = and!(JsonString, Ws<Colon>, JsonValue);
+type JsonArray = Delimited<Ws<LBracket>, Ws<RBracket>, Separated0<JsonValue, Ws<Comma>>>;
 type JsonObject = Delimited<Ws<LBrace>, Ws<RBrace>, Separated0<JsonMember, Ws<Comma>>>;
 
 #[derive(Debug, Clone, PartialEq, Parse)]
@@ -11,7 +12,10 @@ pub enum JsonValue {
     Bool(Ws<bool>),
     Number(Ws<f64>),
     String(JsonString),
-    Array(Vec<JsonValue>),
+    Array(
+        #[parse(from(JsonArray, |a| a.inner.into_items()))]
+        Vec<JsonValue>
+    ),
     Object(
         #[parse(from(JsonObject, object_to_map))]
         BTreeMap<String, JsonValue>
