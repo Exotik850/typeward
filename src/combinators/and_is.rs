@@ -1,4 +1,4 @@
-use crate::{error::ParseResult, parse::Parse};
+use crate::{error::{ParseError, ParseResult}, parse::Parse};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Copy, Default)]
 pub struct AndIs<A, B> {
@@ -54,7 +54,12 @@ where
     ) -> ParseResult<(Self, I)> {
         let (value, remaining) = A::parse_with_context(input, context)?;
         let parsed = input.slice_to(remaining)?;
-        B::parse_with_context(parsed, context)?;
+        let (_, parsed_remaining) = B::parse_with_context(parsed, context)?;
+        if !parsed_remaining.is_empty() {
+            return Err(ParseError::custom(
+                "AndIs validator parser did not consume the full parsed segment",
+            ));
+        }
         Ok((AndIs::new(value), remaining))
     }
 }
