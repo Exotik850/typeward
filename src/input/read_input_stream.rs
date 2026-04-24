@@ -266,6 +266,36 @@ where
             .map_err(|err| ParseError::fatal(format!("invalid UTF-8 input: {err}")))
     }
 
+    fn collect_loaded_segment_preview(self) -> ParseResult<(Vec<u8>, bool)> {
+        if N == 0 {
+            return Err(ParseError::fatal(
+                "ReadInputStream requires a non-zero buffer size",
+            ));
+        }
+
+        let window_start = self.stream.window_start.get();
+        if self.start < window_start {
+            return Err(ReadInputStream::<R, N>::replay_error());
+        }
+
+        let loaded_end = self.stream.loaded_end();
+        let end = self.end.map_or(loaded_end, |bound| bound.min(loaded_end));
+        let mut out = Vec::with_capacity(end.saturating_sub(self.start));
+
+        let buf = self.stream.buf.borrow();
+        for pos in self.start..end {
+            out.push(buf[pos % N]);
+        }
+
+        let truncated = if let Some(bound) = self.end {
+            bound > end
+        } else {
+            !self.stream.eof.get()
+        };
+
+        Ok((out, truncated))
+    }
+
     fn next_char_at(self, position: usize) -> ParseResult<Option<(char, usize)>> {
         if let Some(end) = self.end
             && position >= end
@@ -362,8 +392,15 @@ where
     }
 
     fn display(self) -> Cow<'a, str> {
-        match self.collect_segment_bytes() {
-            Ok(bytes) => Cow::Owned(String::from_utf8_lossy(&bytes).into_owned()),
+        match self.collect_loaded_segment_preview() {
+            Ok((bytes, truncated)) => {
+                let mut text = String::from_utf8_lossy(&bytes).into_owned();
+                if truncated {
+                    text.push_str("...");
+                }
+
+                Cow::Owned(text)
+            }
             Err(err) => Cow::Owned(format!("<stream display unavailable: {err}>")),
         }
     }
@@ -565,7 +602,10 @@ mod tests {
 
         let (matched, rest) = input.take_while(char::is_alphabetic).unwrap();
         assert_eq!(matched, Cow::<str>::Owned("abc".to_string()));
-        assert_eq!(rest.display(), Cow::<str>::Owned("123".to_string()));
+
+        let preview = rest.display().into_owned();
+        assert!(preview.starts_with('1'));
+        assert!(preview.ends_with("..."));
     }
 
     #[test]
@@ -586,6 +626,17 @@ mod tests {
         let stream = ReadInputStream::<_, 2>::new(Cursor::new(b"hello"));
         let parsed = parse_complete_input::<_, HelloToken>(stream.as_input()).unwrap();
         let _ = parsed;
+    }
+
+    #[test]
+    fn stream_or_backtracking_is_not_corrupted_by_error_previews() {
+        type BoolKeyword = crate::or!(crate::literals::KwTrue, crate::literals::KwFalse);
+
+        let stream = ReadInputStream::<_, 2>::new(Cursor::new(b"false"));
+        let parsed = parse_complete_input::<_, BoolKeyword>(stream.as_input()).unwrap();
+        let rendered = crate::or_match!(parsed, _true_kw => "true", _false_kw => "false");
+
+        assert_eq!(rendered, "false");
     }
 
     #[test]
