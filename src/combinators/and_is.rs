@@ -1,4 +1,7 @@
-use crate::{error::{ParseError, ParseResult}, parse::Parse};
+use crate::{
+    error::{ParseError, ParseResult},
+    parse::Parse,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Copy, Default)]
 pub struct AndIs<A, B> {
@@ -64,6 +67,16 @@ where
     }
 }
 
+#[macro_export]
+macro_rules! and_is {
+    ($value:ty, $validator:ty $(,)?) => {
+        $crate::combinators::and_is::AndIs<$value, $validator>
+    };
+    ($value:ty, $validator:ty, $($rest:ty),+ $(,)?) => {
+        $crate::and_is!($crate::combinators::and_is::AndIs<$value, $validator>, $($rest),+)
+    };
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
@@ -87,5 +100,33 @@ mod tests {
         let input = "abc123";
         let result = AndIs::<&str, AlphaStr>::parse(input);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_and_is_chains_with_itself() {
+        let input = "abc";
+        let result = AndIs::<AndIs<&str, AlphaNumStr>, AlphaStr>::parse(input);
+        assert!(result.is_ok());
+        let (and_is, remaining) = result.unwrap();
+        assert_eq!(and_is.into_inner().into_inner(), "abc");
+        assert_eq!(remaining, "");
+    }
+
+    #[test]
+    fn test_and_is_chaining_checks_all_validators() {
+        let input = "abc123";
+        let result = AndIs::<AndIs<&str, AlphaNumStr>, AlphaStr>::parse(input);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_and_is_macro_chaining() {
+        type Parser<'a> = crate::and_is!(&'a str, AlphaNumStr<'a>, AlphaStr<'a>);
+        let input = "abc";
+        let result = Parser::parse(input);
+        assert!(result.is_ok());
+        let (and_is, remaining) = result.unwrap();
+        assert_eq!(and_is.into_inner().into_inner(), "abc");
+        assert_eq!(remaining, "");
     }
 }
