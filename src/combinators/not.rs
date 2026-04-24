@@ -18,7 +18,13 @@ where
         // Lookahead first: do not execute `S` if `P` accepts the input.
         // This avoids running both parsers' side effects (span scopes, owned
         // buffers from streaming inputs) in the success path.
-        if P::parse_with_context(input, context).is_ok() {
+        let res = P::parse_with_context(input, context);
+        let recoverable = match res {
+            Ok(_) => true,
+            Err(e) if !e.is_fatal() => true,
+            Err(e) => return Err(e),
+        };
+        if recoverable {
             let preview = crate::error::preview_input(
                 input.display().as_ref(),
                 crate::error::DEFAULT_INPUT_PREVIEW,
