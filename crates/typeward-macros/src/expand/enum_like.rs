@@ -91,21 +91,25 @@ fn expand_multi_variant(
         });
 
     let value_exprs = variant_plans.iter().zip(&parsed_idents).enumerate().map(
-        |(index, ((plan, direct_expr), parsed_ident))| if plan.bindings.len() == 0 { quote!(#direct_expr) } else {
-            let parsed_value = quote!(#parsed_ident);
-            let parsed_binding_prefix = format!("__typeward_variant_{index}_parsed_field");
-            let binding_setup_tokens = fields::build_binding_transform_tokens(
-                &plan.bindings,
-                &plan.field_plans,
-                &parsed_value,
-                crate_path,
-                &parsed_binding_prefix,
-            );
+        |(index, ((plan, direct_expr), parsed_ident))| {
+            if plan.bindings.is_empty() {
+                quote!(#direct_expr)
+            } else {
+                let parsed_value = quote!(#parsed_ident);
+                let parsed_binding_prefix = format!("__typeward_variant_{index}_parsed_field");
+                let binding_setup_tokens = fields::build_binding_transform_tokens(
+                    &plan.bindings,
+                    &plan.field_plans,
+                    &parsed_value,
+                    crate_path,
+                    &parsed_binding_prefix,
+                );
 
-            quote!({
-                #binding_setup_tokens
-                #direct_expr
-            })
+                quote!({
+                    #binding_setup_tokens
+                    #direct_expr
+                })
+            }
         },
     );
 

@@ -7,19 +7,14 @@ type JsonArray = Delimited<Ws<LBracket>, Ws<RBracket>, Separated0<JsonValue, Ws<
 type JsonObject = Delimited<Ws<LBrace>, Ws<RBrace>, Separated0<JsonMember, Ws<Comma>>>;
 
 #[derive(Debug, Clone, PartialEq, Parse)]
+#[parse(recursive)]
 pub enum JsonValue {
-    Null(Ignore<Ws<KwNull>>),
+    Null(Ws<KwNull>),
     Bool(Ws<bool>),
     Number(Ws<f64>),
     String(JsonString),
-    Array(
-        #[parse(from(JsonArray, |a| a.inner.into_items()))]
-        Vec<JsonValue>
-    ),
-    Object(
-        #[parse(from(JsonObject, object_to_map))]
-        BTreeMap<String, JsonValue>
-    ),
+    Array(#[parse(from(JsonArray, |a| a.inner.into_items()))] Vec<JsonValue>),
+    Object(#[parse(from(JsonObject, object_to_map))] BTreeMap<String, JsonValue>),
 }
 
 fn object_to_map(object: JsonObject) -> BTreeMap<String, JsonValue> {
@@ -88,13 +83,19 @@ mod tests {
 
     #[test]
     fn parse_scalar_values() {
-        assert_eq!(parse_json("null").unwrap(), JsonValue::Null(Ignore::new()));
+        assert_eq!(
+            parse_json("null").unwrap(),
+            JsonValue::Null(Ws::new(KwNull))
+        );
         assert_eq!(parse_json("true").unwrap(), JsonValue::Bool(Ws::new(true)));
-        assert_eq!(parse_json("-12.5e2").unwrap(), JsonValue::Number(Ws::new(-1250.0)));
+        assert_eq!(
+            parse_json("-12.5e2").unwrap(),
+            JsonValue::Number(Ws::new(-1250.0))
+        );
         assert_eq!(
             parse_json("\"hello world\"").unwrap().as_str(),
             Some("hello world")
-        ); 
+        );
     }
 
     #[test]

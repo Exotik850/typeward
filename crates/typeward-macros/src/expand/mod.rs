@@ -6,7 +6,7 @@ use std::collections::HashSet;
 
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use syn::{Data, DeriveInput, GenericParam, Generics, Ident, Lifetime, Path};
+use syn::{Data, DeriveInput, GenericParam, Generics, Ident, Lifetime, Path, visit::Visit};
 
 use crate::attrs::ContainerAttrs;
 
@@ -40,6 +40,8 @@ fn expand_parse_impl(input: &DeriveInput) -> syn::Result<TokenStream> {
 
     let all_parser_field_types =
         fields::collect_all_parser_field_types(&input.data, &attrs.crate_path)?;
+    ensure_recursive_parse_is_opted_in(&input.ident, &all_parser_field_types, attrs.recursive)?;
+
     let impl_header = build_impl_header(
         input,
         &attrs.crate_path,
@@ -77,6 +79,38 @@ fn expand_parse_impl(input: &DeriveInput) -> syn::Result<TokenStream> {
             }
         }
     })
+}
+
+fn ensure_recursive_parse_is_opted_in(
+    type_name: &Ident,
+    field_types: &[syn::Type],
+    recursive_opt_in: bool,
+) -> syn::Result<()> {
+    if recursive_opt_in {
+        return Ok(());
+    }
+
+    let recursive_field_types: Vec<_> = field_types
+        .iter()
+        .filter(|ty| type_mentions_name_or_self(ty, type_name))
+        .collect();
+
+    if recursive_field_types.is_empty() {
+        return Ok(());
+    }
+
+    let error_message = format!(
+        "recursive parser type detected while deriving `Parse` for `{type_name}`; \
+recursive derives are disabled by default because they can create non-terminating parses and stack overflows. \
+Add `#[parse(recursive)]` to `{type_name}` to opt in"
+    );
+
+    let mut error = syn::Error::new_spanned(recursive_field_types[0], &error_message);
+    for ty in recursive_field_types.into_iter().skip(1) {
+        error.combine(syn::Error::new_spanned(ty, &error_message));
+    }
+
+    Err(error)
 }
 
 fn build_impl_header(
@@ -154,18 +188,47 @@ fn type_mentions_any_name(ty: &syn::Type, names: &HashSet<String>) -> bool {
         return false;
     }
 
-    quote!(#ty)
-        .to_string()
-        .split(|ch: char| !(ch.is_ascii_alphanumeric() || ch == '_'))
-        .any(|segment| !segment.is_empty() && names.contains(segment))
+    type_mentions_ident(ty, |ident| names.contains(&ident.to_string()))
 }
 
 fn type_mentions_name_or_self(ty: &syn::Type, name: &Ident) -> bool {
-    let target = name.to_string();
-    quote!(#ty)
-        .to_string()
-        .split(|ch: char| !(ch.is_ascii_alphanumeric() || ch == '_'))
-        .any(|segment| segment == target || segment == "Self")
+    type_mentions_ident(ty, |ident| ident == name || ident == "Self")
+}
+
+fn type_mentions_ident(ty: &syn::Type, predicate: impl Fn(&Ident) -> bool) -> bool {
+    struct TypeIdentVisitor<F> {
+        predicate: F,
+        found: bool,
+    }
+
+    impl<'ast, F> Visit<'ast> for TypeIdentVisitor<F>
+    where
+        F: Fn(&Ident) -> bool,
+    {
+        fn visit_ident(&mut self, ident: &'ast Ident) {
+            if !self.found && (self.predicate)(ident) {
+                self.found = true;
+                return;
+            }
+
+            syn::visit::visit_ident(self, ident);
+        }
+
+        fn visit_type(&mut self, ty: &'ast syn::Type) {
+            if self.found {
+                return;
+            }
+
+            syn::visit::visit_type(self, ty);
+        }
+    }
+
+    let mut visitor = TypeIdentVisitor {
+        predicate,
+        found: false,
+    };
+    visitor.visit_type(ty);
+    visitor.found
 }
 
 fn unique_name(

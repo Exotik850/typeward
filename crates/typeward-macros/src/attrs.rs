@@ -2,6 +2,7 @@ use syn::{DeriveInput, Expr, Field, Path, Type, parse_quote};
 
 pub(crate) struct ContainerAttrs {
     pub(crate) crate_path: Path,
+    pub(crate) recursive: bool,
 }
 
 pub(crate) struct FieldAttrs {
@@ -17,6 +18,7 @@ pub(crate) struct FromAttr {
 impl ContainerAttrs {
     pub(crate) fn from_input(input: &DeriveInput) -> syn::Result<Self> {
         let mut crate_path: Option<Path> = None;
+        let mut recursive = false;
 
         for attr in &input.attrs {
             if !attr.path().is_ident("parse") {
@@ -32,14 +34,28 @@ impl ContainerAttrs {
                     let value = meta.value()?;
                     crate_path = Some(value.parse::<Path>()?);
                     Ok(())
+                } else if meta.path.is_ident("recursive") {
+                    if recursive {
+                        return Err(meta.error("duplicate `recursive` argument"));
+                    }
+
+                    if !meta.input.is_empty() {
+                        return Err(meta.error("`recursive` does not accept arguments"));
+                    }
+
+                    recursive = true;
+                    Ok(())
                 } else {
-                    Err(meta.error("unsupported parse attribute; expected `crate = path`"))
+                    Err(meta.error(
+                        "unsupported parse attribute; expected `crate = path` or `recursive`",
+                    ))
                 }
             })?;
         }
 
         Ok(Self {
             crate_path: crate_path.unwrap_or_else(|| parse_quote!(::typeward)),
+            recursive,
         })
     }
 }

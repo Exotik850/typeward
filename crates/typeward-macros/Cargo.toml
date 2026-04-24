@@ -13,7 +13,8 @@ proc-macro = true
 [dependencies]
 proc-macro2 = { version = "1.0", default-features = false }
 quote = { version = "1.0", default-features = false }
-syn = { version = "2.0", features = ["full"] }
+syn = { version = "2.0", features = ["full", "visit"] }
 
 [dev-dependencies]
 typeward = { path = "../..", version = "0.3", default-features = false }
+trybuild = "1.0"

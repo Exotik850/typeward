@@ -1,0 +1,5 @@
+error: recursive parser type detected while deriving `Parse` for `RecursiveValue`; recursive derives are disabled by default because they can create non-terminating parses and stack overflows. Add `#[parse(recursive)]` to `RecursiveValue` to opt in
+ --> tests/ui/recursive_without_opt_in.rs:7:11
+  |
+7 |     Array(Vec<RecursiveValue>),
+  |           ^^^^^^^^^^^^^^^^^^^

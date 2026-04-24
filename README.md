@@ -112,6 +112,7 @@ struct Wrapper<T>(T);
 ```
 
 Field-level attributes like `#[parse(ws)]` and `#[parse(from(ParserType, mapper))]` customize how each field is parsed.
+Recursive parser shapes are rejected by default; add `#[parse(recursive)]` on the container to opt in when your grammar is structured to consume input at each recursive step.
 
 ## Core Modules
 

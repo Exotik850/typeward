@@ -1,4 +1,5 @@
 use typeward::prelude::*;
+use typeward_macros::Parse;
 
 fn ws_into_inner<T>(value: Ws<T>) -> T {
     value.into_inner()
