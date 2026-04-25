@@ -17,6 +17,7 @@ fn recursive_derive_runtime_guard_stops_same_offset_recursion() {
 
     #[derive(Parse, Debug)]
     #[parse(recursive)]
+    #[allow(dead_code)]
     enum RecursiveLoop {
         Next(Vec<RecursiveLoop>),
     }

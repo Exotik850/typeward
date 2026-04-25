@@ -56,8 +56,11 @@ fn expand_parse_impl(input: &DeriveInput) -> syn::Result<TokenStream> {
         Data::Enum(data_enum) => {
             enum_like::expand_enum_body(&input.ident, data_enum, &attrs.crate_path, &parse_generics)
         }
-        Data::Union(data_union) => {
-            struct_like::expand_union_body(data_union, &attrs.crate_path, &parse_generics)
+        Data::Union(_) => {
+            return Err(syn::Error::new_spanned(
+                input,
+                "Parse cannot be derived for unions",
+            ));
         }
     }?;
 

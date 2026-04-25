@@ -40,13 +40,6 @@ where
     end: Ws<KwNull>,
 }
 
-#[allow(dead_code)]
-#[derive(Clone, Copy, Parse)]
-union NumericAndNull {
-    number: Ws<i64>,
-    null: Ws<KwNull>,
-}
-
 #[derive(Debug, PartialEq, Parse)]
 #[parse(crate = typeward)]
 struct ExplicitCratePath {
@@ -171,16 +164,6 @@ fn derive_parse_enum_combines_and_and_or() {
 fn derive_parse_generic_struct_adds_parse_bounds() {
     let parsed = parse_complete::<Wrapped<i64>>("15 null").unwrap();
     assert_eq!(parsed.inner, 15);
-}
-
-#[test]
-fn derive_parse_union_parses_all_fields_like_and() {
-    let (parsed, rest) = NumericAndNull::parse("10 null tail").unwrap();
-    assert_eq!(rest, " tail");
-
-    // SAFETY: The derive implementation initializes the `number` field.
-    let number = unsafe { parsed.number };
-    assert_eq!(number, 10);
 }
 
 #[test]

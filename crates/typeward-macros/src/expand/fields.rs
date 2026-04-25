@@ -268,29 +268,6 @@ pub(crate) fn struct_constructor(shape: &FieldShape, bindings: &[Ident]) -> Toke
     constructor(None, shape, bindings)
 }
 
-pub(crate) fn union_constructor(field_names: &[Ident], bindings: &[Ident]) -> TokenStream {
-    debug_assert_eq!(field_names.len(), bindings.len());
-
-    let first_field = &field_names[0];
-    let first_binding = &bindings[0];
-    let ignored_bindings: Vec<_> = bindings.iter().skip(1).collect();
-
-    let ignore_rest = if ignored_bindings.is_empty() {
-        quote! {}
-    } else {
-        quote! {
-            let _ = (#(&#ignored_bindings),*);
-        }
-    };
-
-    quote!({
-        #ignore_rest
-        Self {
-            #first_field: #first_binding,
-        }
-    })
-}
-
 fn collect_field_parser_types(fields: &Fields, crate_path: &Path) -> syn::Result<Vec<Type>> {
     collect_field_plans(fields, crate_path)
         .map(|plans| plans.into_iter().map(|plan| plan.parser_ty).collect())
