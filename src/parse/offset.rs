@@ -1,4 +1,5 @@
 use crate::input::{Input, ReadInput, ReadInputStreamInput};
+use crate::{error::ParseResult, error::SourceSpan};
 use std::cmp::Reverse;
 
 /// Anchor metadata used to compute absolute parser offsets.
@@ -54,12 +55,22 @@ pub trait ParseOffsetInput<'a>: Input<'a> {
 #[derive(Debug, Default, Clone)]
 pub struct ParseOffsetContext {
     roots: Vec<ParseOffsetAnchor>,
+    recursion_stack: Vec<RecursionFrame>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct RecursionFrame {
+    parser_name: &'static str,
+    offset: usize,
 }
 
 impl ParseOffsetContext {
     #[must_use]
     pub fn new() -> Self {
-        Self { roots: Vec::new() }
+        Self {
+            roots: Vec::new(),
+            recursion_stack: Vec::new(),
+        }
     }
 
     fn has_scope_for<'a, I>(&self, input: I) -> bool
@@ -71,6 +82,43 @@ impl ParseOffsetContext {
             .copied()
             .any(|root| input.parse_offset_from(root).is_some())
     }
+}
+
+/// Executes `parse` while guarding against same-offset recursion for `parser_name`.
+///
+/// If the same parser type re-enters at the same absolute offset before the
+/// previous frame has completed, parsing would otherwise recurse forever. This
+/// guard converts that condition into a fatal parse error.
+pub fn with_parse_recursion_guard<'a, I, R>(
+    context: &mut ParseOffsetContext,
+    input: I,
+    parser_name: &'static str,
+    parse: impl FnOnce(&mut ParseOffsetContext) -> ParseResult<R>,
+) -> ParseResult<R>
+where
+    I: ParseOffsetInput<'a>,
+{
+    let offset = current_parse_offset(context, input);
+
+    if context
+        .recursion_stack
+        .iter()
+        .any(|frame| frame.parser_name == parser_name && frame.offset == offset)
+    {
+        let message =
+            format!("recursive parser `{parser_name}` made no progress at offset {offset}");
+        return Err(crate::error::ParseError::custom(message)
+            .with_span(SourceSpan::point(offset))
+            .into_fatal());
+    }
+
+    context.recursion_stack.push(RecursionFrame {
+        parser_name,
+        offset,
+    });
+    let result = parse(context);
+    context.recursion_stack.pop();
+    result
 }
 
 pub(crate) fn with_parse_offset_scope<'a, I, R>(
@@ -225,6 +273,39 @@ mod tests {
             });
 
             assert_eq!(current_parse_offset(context, inner_tail), 3);
+        });
+    }
+
+    #[test]
+    fn test_with_parse_recursion_guard_rejects_same_parser_same_offset() {
+        let input = "abc";
+        let mut context = ParseOffsetContext::new();
+
+        with_parse_offset_scope(&mut context, input, |context| {
+            let err = with_parse_recursion_guard(context, input, "Demo", |context| {
+                with_parse_recursion_guard(context, input, "Demo", |_context| Ok(()))
+            })
+            .expect_err("expected recursion guard error");
+
+            assert!(err.is_fatal());
+            assert_eq!(err.span(), Some(SourceSpan::point(0)));
+            assert!(err.to_string().contains("made no progress"));
+        });
+    }
+
+    #[test]
+    fn test_with_parse_recursion_guard_allows_progress() {
+        let input = "abc";
+        let rest = &input[1..];
+        let mut context = ParseOffsetContext::new();
+
+        with_parse_offset_scope(&mut context, input, |context| {
+            let result = with_parse_recursion_guard(context, input, "Demo", |context| {
+                with_parse_recursion_guard(context, rest, "Demo", |_context| Ok(123usize))
+            })
+            .expect("progressing recursion should be allowed");
+
+            assert_eq!(result, 123);
         });
     }
 }

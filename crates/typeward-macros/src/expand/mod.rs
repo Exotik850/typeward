@@ -75,7 +75,11 @@ fn expand_parse_impl(input: &DeriveInput) -> syn::Result<TokenStream> {
                 input: #input_ident,
                 context: &mut #crate_path::parse::ParseOffsetContext,
             ) -> #crate_path::error::ParseResult<(Self, #input_ident)> {
-                #body
+                // TODO: Make the recursion gaurd only wrap when opted in
+                // Or make a better solution for detecting and preventing infinite recursion that doesn't require opt-in
+                #crate_path::parse::with_parse_recursion_guard(context, input, stringify!(#name), |context| {
+                    #body
+                })
             }
         }
     })
