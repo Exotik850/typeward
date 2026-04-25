@@ -1,4 +1,7 @@
-use crate::{error::ParseResult, parse::Parse};
+use crate::{
+    error::{ParseError, ParseResult},
+    parse::Parse,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Or<A, B> {
@@ -122,9 +125,52 @@ where
             Err(left_err) => match B::parse_with_context(input, context) {
                 Ok((b, rest)) => Ok((Or::Right(b), rest)),
                 Err(right_err) if right_err.is_fatal() => Err(right_err),
-                Err(right_err) => Err(left_err.farthest(right_err)),
+                Err(right_err) => Err(combine_alternative_errors(left_err, right_err)),
             },
         }
+    }
+}
+
+fn combine_alternative_errors(left_err: ParseError, right_err: ParseError) -> ParseError {
+    if let Some(merged) = merge_expected_token_errors(&left_err, &right_err) {
+        return merged;
+    }
+
+    left_err.farthest(right_err)
+}
+
+fn merge_expected_token_errors(
+    left_err: &ParseError,
+    right_err: &ParseError,
+) -> Option<ParseError> {
+    if left_err.span() != right_err.span() {
+        return None;
+    }
+
+    let (left_expected, left_found) = expected_tokens(left_err.root_cause())?;
+    let (right_expected, right_found) = expected_tokens(right_err.root_cause())?;
+
+    if left_found != right_found {
+        return None;
+    }
+
+    let expected = left_expected
+        .into_iter()
+        .chain(right_expected)
+        .collect::<Vec<_>>();
+    let mut error = ParseError::expected_one_of(expected, left_found);
+    if let Some(span) = left_err.span() {
+        error = error.with_span(span);
+    }
+
+    Some(error)
+}
+
+fn expected_tokens(error: &ParseError) -> Option<(Vec<&'static str>, &str)> {
+    match error {
+        ParseError::UnexpectedToken { expected, found } => Some((vec![*expected], found.as_str())),
+        ParseError::ExpectedOneOf { expected, found } => Some((expected.clone(), found.as_str())),
+        _ => None,
     }
 }
 
@@ -271,16 +317,16 @@ mod tests {
     }
 
     #[test]
-    fn test_alt_error_tie_prefers_last_alternative() {
+    fn test_alt_error_tie_merges_expected_tokens() {
         type AltType = or!(KwTrue, KwFalse);
         let err = parse_complete::<AltType>("maybe").unwrap_err();
 
         assert!(matches!(
             err.root_cause(),
-            crate::error::ParseError::UnexpectedToken {
-                expected: "false",
+            crate::error::ParseError::ExpectedOneOf {
+                expected,
                 ..
-            }
+            } if expected == &vec!["true", "false"]
         ));
     }
 

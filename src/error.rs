@@ -1,4 +1,4 @@
-use std::{borrow::Cow, fmt, ops::Range};
+use std::{borrow::Cow, collections::HashSet, fmt, ops::Range};
 
 /// Default maximum character count for rendering input snippets in errors.
 pub const DEFAULT_INPUT_PREVIEW: usize = 80;
@@ -149,6 +149,14 @@ pub enum ParseError {
         expected: &'static str,
         found: String,
     },
+    /// The parser expected one of several specific tokens.
+    ///
+    /// The `found` field is truncated to [`DEFAULT_INPUT_PREVIEW`] at
+    /// construction time.
+    ExpectedOneOf {
+        expected: Vec<&'static str>,
+        found: String,
+    },
     /// The input ended unexpectedly while parsing.
     UnexpectedEOF,
     /// A custom error message.
@@ -174,6 +182,18 @@ impl fmt::Display for ParseError {
                 write!(
                     f,
                     "unexpected token: expected '{expected}', found '{found}'"
+                )
+            }
+            ParseError::ExpectedOneOf { expected, found } => {
+                let found = preview_input(found, DEFAULT_INPUT_PREVIEW);
+                let expected = expected
+                    .iter()
+                    .map(|token| format!("'{token}'"))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                write!(
+                    f,
+                    "unexpected token: expected one of [{expected}], found '{found}'"
                 )
             }
             ParseError::UnexpectedEOF => write!(f, "unexpected end of input"),
@@ -215,6 +235,21 @@ impl ParseError {
     pub fn unexpected_token(expected: &'static str, found: &str) -> Self {
         ParseError::UnexpectedToken {
             expected,
+            found: preview_input(found, DEFAULT_INPUT_PREVIEW),
+        }
+    }
+
+    /// Build an [`Self::ExpectedOneOf`] error with de-duplicated expected
+    /// tokens and a pre-truncated `found` snippet.
+    #[must_use]
+    pub fn expected_one_of(expected: impl IntoIterator<Item = &'static str>, found: &str) -> Self {
+        let mut deduped = HashSet::new();
+        for token in expected {
+            deduped.insert(token);
+        }
+
+        ParseError::ExpectedOneOf {
+            expected: deduped.into_iter().collect(),
             found: preview_input(found, DEFAULT_INPUT_PREVIEW),
         }
     }
@@ -314,6 +349,55 @@ impl ParseError {
             _ => self,
         }
     }
+
+    /// Render this error with line/column/source context when a span is present.
+    #[must_use]
+    pub fn render_with_source(&self, source: &str) -> String {
+        let Some(span) = self.span() else {
+            return self.to_string();
+        };
+
+        let (line, col) = span.line_col(source);
+        let (line_text, marker_len) = source_line_context(source, span);
+        let marker_len = marker_len.max(1);
+        let marker = format!(
+            "{}{}",
+            " ".repeat(col.saturating_sub(1)),
+            "^".repeat(marker_len)
+        );
+
+        format!(
+            "{self}\n --> line {line}, column {col}\n  |\n{line:>3} | {line_text}\n  | {marker}"
+        )
+    }
+}
+
+fn source_line_context(source: &str, span: SourceSpan) -> (String, usize) {
+    let safe_start = clamp_to_char_boundary(source, span.start.min(source.len()));
+    let safe_end = clamp_to_char_boundary(source, span.end.min(source.len()));
+
+    let line_start = source[..safe_start].rfind('\n').map_or(0, |idx| idx + 1);
+    let line_end = source[safe_start..]
+        .find('\n')
+        .map_or(source.len(), |idx| safe_start + idx);
+
+    let line_text = source[line_start..line_end].to_string();
+    let marker_end = safe_end.min(line_end);
+    let marker_len = if marker_end <= safe_start {
+        1
+    } else {
+        source[safe_start..marker_end].chars().count().max(1)
+    };
+
+    (line_text, marker_len)
+}
+
+fn clamp_to_char_boundary(source: &str, mut offset: usize) -> usize {
+    while offset > 0 && !source.is_char_boundary(offset) {
+        offset -= 1;
+    }
+
+    offset
 }
 
 #[cfg(test)]
@@ -336,6 +420,15 @@ mod tests {
     fn test_error_display_eof() {
         let err = ParseError::UnexpectedEOF;
         assert_eq!(format!("{}", err), "unexpected end of input");
+    }
+
+    #[test]
+    fn test_error_display_expected_one_of() {
+        let err = ParseError::expected_one_of(["true", "false"], "maybe");
+        assert_eq!(
+            format!("{}", err),
+            "unexpected token: expected one of ['true', 'false'], found 'maybe'"
+        );
     }
 
     #[test]
@@ -446,5 +539,27 @@ mod tests {
             }
             other => panic!("unexpected variant: {other:?}"),
         }
+    }
+
+    #[test]
+    fn test_expected_one_of_constructor_dedupes_expected_tokens() {
+        let err = ParseError::expected_one_of(["let", "if", "let"], "value");
+        match err {
+            ParseError::ExpectedOneOf { expected, .. } => {
+                assert_eq!(expected, vec!["let", "if"]);
+            }
+            other => panic!("unexpected variant: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_render_with_source_includes_line_context() {
+        let source = "let alpha = 1;\nlet beta = ;\n";
+        let err = ParseError::custom("expected expression").with_span(SourceSpan::point(25));
+        let rendered = err.render_with_source(source);
+
+        assert!(rendered.contains("line 2, column 11"));
+        assert!(rendered.contains("2 | let beta = ;"));
+        assert!(rendered.contains("^"));
     }
 }
