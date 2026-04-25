@@ -4,6 +4,7 @@ pub mod cut;
 pub mod delim_nested;
 pub mod delimited;
 pub mod ignore;
+pub mod keyword;
 pub mod not;
 pub mod or;
 pub mod peek;
@@ -18,6 +19,7 @@ pub mod prelude {
     pub use super::delim_nested::{Braced, Bracketed, DelimNested, Parenthesized};
     pub use super::delimited::{Delimited, DelimitedExact, Padded, PaddedExact};
     pub use super::ignore::{Forget, Ignore, Preceded, Terminated};
+    pub use super::keyword::{IdentBoundary, Keyword, KeywordBoundary, Kw};
     pub use super::not::Not;
     pub use super::or::{Either, Or};
     pub use super::peek::Peek;
