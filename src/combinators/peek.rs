@@ -2,7 +2,7 @@ use crate::{error::ParseResult, parse::Parse};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Peek<P> {
-    parser: P,
+    value: P,
 }
 
 impl<'a, I, P> Parse<'a, I> for Peek<P>
@@ -15,8 +15,8 @@ where
         input: I,
         context: &mut crate::parse::ParseOffsetContext,
     ) -> ParseResult<(Self, I)> {
-        let (parser, _) = P::parse_with_context(input, context)?;
-        Ok((Peek { parser }, input))
+        let (value, _) = P::parse_with_context(input, context)?;
+        Ok((Peek { value }, input))
     }
 }
 
@@ -30,7 +30,7 @@ mod tests {
     fn test_peek() {
         let input = "42";
         let (result, rest) = Peek::<i64>::parse(input).unwrap();
-        assert_eq!(result.parser, 42);
+        assert_eq!(result.value, 42);
         assert_eq!(rest, "42");
     }
 
@@ -39,7 +39,7 @@ mod tests {
         let input = "42abc";
         let (result, rest) = And::<i64, Peek<AlphaString>>::parse(input).unwrap();
         assert_eq!(result.left, 42);
-        assert_eq!(result.right.parser, "abc");
+        assert_eq!(result.right.value, "abc");
         assert_eq!(rest, "abc");
     }
 }
