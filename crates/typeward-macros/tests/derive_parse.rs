@@ -5,6 +5,10 @@ fn ws_into_inner<T>(value: Ws<T>) -> T {
     value.into_inner()
 }
 
+fn non_zero(value: i64) -> Result<std::num::NonZeroI64, &'static str> {
+    std::num::NonZeroI64::new(value).ok_or("expected non-zero integer")
+}
+
 #[derive(Debug, PartialEq, Parse)]
 struct NamedPair {
     left: Ws<i64>,
@@ -102,6 +106,30 @@ struct WithGeneric<T>
 //     T: Parse,
 {
     value: Ws<T>,
+}
+
+#[derive(Debug, PartialEq, Parse)]
+struct MapOnlyField {
+    #[parse(map(|value: i64| value + 1))]
+    value: i64,
+}
+
+#[derive(Debug, PartialEq, Parse)]
+struct TryMappedField {
+    #[parse(from(i64), try_map(non_zero))]
+    value: std::num::NonZeroI64,
+}
+
+#[derive(Debug, PartialEq, Parse)]
+struct MapperPipelineField {
+    #[parse(from(Ws<String>), map(|ws| ws.into_inner()), map(NonParseString))]
+    value: NonParseString,
+}
+
+#[derive(Debug, PartialEq, Parse)]
+struct FromTypeOnlyField {
+    #[parse(from(Ws<i64>))]
+    value: Ws<i64>,
 }
 
 #[test]
@@ -210,4 +238,31 @@ fn derive_parse_field_ws_attribute_for_enum_variants() {
 
     let word = parse_complete::<WsAttributeEnum>("   alpha_9").unwrap();
     assert!(matches!(word, WsAttributeEnum::Word(value) if value.value == "alpha_9"));
+}
+
+#[test]
+fn derive_parse_field_map_attribute_applies_post_parse_transform() {
+    let parsed = parse_complete::<MapOnlyField>("41").unwrap();
+    assert_eq!(parsed.value, 42);
+}
+
+#[test]
+fn derive_parse_field_try_map_attribute_supports_fallible_transform() {
+    let parsed = parse_complete::<TryMappedField>("7").unwrap();
+    assert_eq!(parsed.value.get(), 7);
+
+    let err = parse_complete::<TryMappedField>("0").unwrap_err();
+    assert!(err.to_string().contains("expected non-zero integer"));
+}
+
+#[test]
+fn derive_parse_field_map_pipeline_supports_composition() {
+    let parsed = parse_complete::<MapperPipelineField>("  hello").unwrap();
+    assert_eq!(parsed.value, NonParseString("hello".into()));
+}
+
+#[test]
+fn derive_parse_field_from_type_only_is_supported() {
+    let parsed = parse_complete::<FromTypeOnlyField>("   5").unwrap();
+    assert_eq!(parsed.value, 5);
 }

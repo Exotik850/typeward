@@ -1,9 +1,9 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use syn::{Data, Expr, Field, Fields, Ident, Path, Type};
+use syn::{Data, Field, Fields, Ident, Path, Type};
 
 use super::ParseGenerics;
-use crate::attrs::FieldAttrs;
+use crate::attrs::{FieldAttrs, FieldMapper};
 
 #[derive(Clone)]
 pub(crate) enum FieldShape {
@@ -15,7 +15,7 @@ pub(crate) enum FieldShape {
 #[derive(Clone)]
 pub(crate) struct FieldPlan {
     pub(crate) parser_ty: Type,
-    pub(crate) mapper: Option<Expr>,
+    pub(crate) mappers: Vec<FieldMapper>,
 }
 
 pub(crate) struct ParsedFields {
@@ -147,8 +147,9 @@ pub(crate) fn build_binding_transform_tokens(
             let parsed_binding = format_ident!("{parsed_binding_prefix}_0");
             let binding = &bindings[0];
             let parser_ty = &field_plans[0].parser_ty;
-            let mapper = &field_plans[0].mapper;
-            let map_stmt = map_parsed_value(binding, &parsed_binding, parser_ty, mapper);
+            let mappers = &field_plans[0].mappers;
+            let map_stmt =
+                map_parsed_value(binding, &parsed_binding, parser_ty, mappers, crate_path);
 
             quote! {
                 let #parsed_binding = #parsed_value;
@@ -162,7 +163,13 @@ pub(crate) fn build_binding_transform_tokens(
 
             let mapping_stmts = bindings.iter().zip(&parsed_bindings).zip(field_plans).map(
                 |((binding, parsed_binding), plan)| {
-                    map_parsed_value(binding, parsed_binding, &plan.parser_ty, &plan.mapper)
+                    map_parsed_value(
+                        binding,
+                        parsed_binding,
+                        &plan.parser_ty,
+                        &plan.mappers,
+                        crate_path,
+                    )
                 },
             );
 
@@ -180,22 +187,56 @@ pub(crate) fn build_binding_transform_tokens(
 fn map_parsed_value(
     binding: &Ident,
     parsed_binding: &Ident,
-    parser_ty: &Type,
-    mapper: &Option<Expr>,
+    _parser_ty: &Type,
+    mappers: &[FieldMapper],
+    crate_path: &Path,
 ) -> TokenStream {
-    if let Some(mapper) = mapper {
+    if mappers.is_empty() {
+        quote! {
+            let #binding = #parsed_binding;
+        }
+    } else {
+        let mapper_steps = mappers.iter().enumerate().map(|(index, mapper)| {
+            let current = format_ident!("__typeward_mapped_{index}");
+            let next = format_ident!("__typeward_mapped_{}", index + 1);
+
+            match mapper {
+                FieldMapper::Infallible(mapper_expr) => quote! {
+                    let #next = __typeward_apply_mapper(#current, #mapper_expr);
+                },
+                FieldMapper::Fallible(mapper_expr) => quote! {
+                    let #next = __typeward_apply_try_mapper(#current, #mapper_expr)
+                        .map_err(|err| #crate_path::error::ParseError::custom(format!("field mapper failed: {err}")))?;
+                },
+            }
+        });
+
+        let final_ident = format_ident!("__typeward_mapped_{}", mappers.len());
+
         quote! {
             let #binding = {
+                // These are needed to give the compiler
+                // the info it needs to type-check the mappers, but they get optimized away.
+                // This allows for closures without needing explicit type annotations.
+                
                 fn __typeward_apply_mapper<In, Out>(value: In, mapper: impl FnOnce(In) -> Out) -> Out {
                     mapper(value)
                 }
 
-                __typeward_apply_mapper::<#parser_ty, _>(#parsed_binding, #mapper)
+                fn __typeward_apply_try_mapper<In, Out, E>(
+                    value: In,
+                    mapper: impl FnOnce(In) -> ::core::result::Result<Out, E>,
+                ) -> ::core::result::Result<Out, E>
+                where
+                    E: ::core::fmt::Display,
+                {
+                    mapper(value)
+                }
+
+                let __typeward_mapped_0 = #parsed_binding;
+                #(#mapper_steps)*
+                #final_ident
             };
-        }
-    } else {
-        quote! {
-            let #binding = #parsed_binding;
         }
     }
 }
@@ -275,6 +316,6 @@ fn field_plan(field: &Field, crate_path: &Path) -> syn::Result<FieldPlan> {
     let attrs = FieldAttrs::from_field(field, crate_path)?;
     Ok(FieldPlan {
         parser_ty: attrs.parser_ty_or(&field.ty),
-        mapper: attrs.mapper(),
+        mappers: attrs.mappers(),
     })
 }

@@ -6,13 +6,14 @@ pub(crate) struct ContainerAttrs {
 }
 
 pub(crate) struct FieldAttrs {
-    pub(crate) from: Option<FromAttr>,
+    pub(crate) parser_ty: Option<Type>,
+    pub(crate) mappers: Vec<FieldMapper>,
 }
 
 #[derive(Clone)]
-pub(crate) struct FromAttr {
-    pub(crate) parser_ty: Type,
-    pub(crate) mapper: Expr,
+pub(crate) enum FieldMapper {
+    Infallible(Expr),
+    Fallible(Expr),
 }
 
 impl ContainerAttrs {
@@ -62,7 +63,8 @@ impl ContainerAttrs {
 
 impl FieldAttrs {
     pub(crate) fn from_field(field: &Field, crate_path: &Path) -> syn::Result<Self> {
-        let mut from: Option<FromAttr> = None;
+        let mut parser_ty: Option<Type> = None;
+        let mut mappers: Vec<FieldMapper> = Vec::new();
 
         for attr in &field.attrs {
             if !attr.path().is_ident("parse") {
@@ -71,30 +73,34 @@ impl FieldAttrs {
 
             attr.parse_nested_meta(|meta| {
                 if meta.path.is_ident("from") {
-                    if from.is_some() {
-                        return Err(meta.error("duplicate `from` argument"));
+                    if parser_ty.is_some() {
+                        return Err(meta.error("duplicate parser source; `from` or `ws` may only be used once"));
                     }
 
                     let content;
                     syn::parenthesized!(content in meta.input);
 
-                    let parser_ty = content.parse::<Type>()?;
-                    if content.is_empty() {
-                        return Err(content.error("expected `from(Type, mapper)`"));
-                    }
+                    let from_parser_ty = content.parse::<Type>()?;
 
-                    content.parse::<syn::Token![,]>()?;
-                    let mapper = content.parse::<Expr>()?;
+                    if !content.is_empty() {
+                        content.parse::<syn::Token![,]>()?;
+                        if content.is_empty() {
+                            return Err(content.error("expected mapper expression after comma"));
+                        }
+
+                        let mapper = content.parse::<Expr>()?;
+                        mappers.push(FieldMapper::Infallible(mapper));
+                    }
 
                     if !content.is_empty() {
                         return Err(content.error("unexpected tokens in `from` argument"));
                     }
 
-                    from = Some(FromAttr { parser_ty, mapper });
+                    parser_ty = Some(from_parser_ty);
                     Ok(())
                 } else if meta.path.is_ident("ws") {
-                    if from.is_some() {
-                        return Err(meta.error("duplicate `from` argument"));
+                    if parser_ty.is_some() {
+                        return Err(meta.error("duplicate parser source; `from` or `ws` may only be used once"));
                     }
 
                     if !meta.input.is_empty() {
@@ -102,29 +108,54 @@ impl FieldAttrs {
                     }
 
                     let field_ty = &field.ty;
-                    from = Some(FromAttr {
-                        parser_ty: parse_quote!(#crate_path::combinators::ws::Ws<#field_ty>),
-                        mapper: parse_quote!(|__typeward_ws| __typeward_ws.into_inner()),
-                    });
+                    parser_ty = Some(parse_quote!(#crate_path::combinators::ws::Ws<#field_ty>));
+                    mappers.push(FieldMapper::Infallible(
+                        parse_quote!(|__typeward_ws| __typeward_ws.into_inner()),
+                    ));
+                    Ok(())
+                } else if meta.path.is_ident("map") {
+                    let content;
+                    syn::parenthesized!(content in meta.input);
+
+                    let mapper = content.parse::<Expr>()?;
+
+                    if !content.is_empty() {
+                        return Err(content.error("unexpected tokens in `map` argument"));
+                    }
+
+                    mappers.push(FieldMapper::Infallible(mapper));
+                    Ok(())
+                } else if meta.path.is_ident("try_map") {
+                    let content;
+                    syn::parenthesized!(content in meta.input);
+
+                    let mapper = content.parse::<Expr>()?;
+
+                    if !content.is_empty() {
+                        return Err(content.error("unexpected tokens in `try_map` argument"));
+                    }
+
+                    mappers.push(FieldMapper::Fallible(mapper));
                     Ok(())
                 } else {
                     Err(meta.error(
-                        "unsupported parse field attribute; expected `ws` or `from(Type, mapper)`",
+                        "unsupported parse field attribute; expected `ws`, `from(Type[, mapper])`, `map(expr)`, or `try_map(expr)`",
                     ))
                 }
             })?;
         }
 
-        Ok(Self { from })
+        Ok(Self { parser_ty, mappers })
     }
 
     pub(crate) fn parser_ty_or(&self, fallback: &Type) -> Type {
-        self.from
+        self.parser_ty
             .as_ref()
-            .map_or_else(|| fallback.clone(), |from| from.parser_ty.clone())
+            .cloned()
+            .unwrap_or_else(|| fallback.clone())
     }
 
-    pub(crate) fn mapper(&self) -> Option<Expr> {
-        self.from.as_ref().map(|from| from.mapper.clone())
+    pub(crate) fn mappers(&self) -> Vec<FieldMapper> {
+        self.mappers.clone()
     }
 }
