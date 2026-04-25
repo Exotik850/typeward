@@ -1,4 +1,81 @@
-use crate::{error::ParseResult, literals::Comma, parse::Parse};
+use crate::{error::ParseResult, literals::Comma, parse::Parse, prelude::Or};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SeparatedIterState {
+    First,
+    Item,
+    Separator,
+    Done,
+}
+
+#[derive(Debug)]
+pub struct SeparatedIter<'a, I, T, S> {
+    input: I,
+    context: &'a mut crate::parse::ParseOffsetContext,
+    state: SeparatedIterState,
+    _marker: std::marker::PhantomData<(T, S)>,
+}
+
+impl<'a, I, T, S> SeparatedIter<'a, I, T, S> {
+    pub fn new(input: I, context: &'a mut crate::parse::ParseOffsetContext) -> Self {
+        Self {
+            input,
+            context,
+            state: SeparatedIterState::First,
+            _marker: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<'input, I, T, S> Iterator for SeparatedIter<'_, I, T, S>
+where
+    I: crate::input::Input<'input>,
+    T: Parse<'input, I>,
+    S: Parse<'input, I>,
+{
+    type Item = ParseResult<Or<Or<T, S>, I>>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.state {
+            SeparatedIterState::First | SeparatedIterState::Item => {
+                match T::parse_with_context(self.input, self.context) {
+                    Ok((item, rest)) => {
+                        if let Err(e) =
+                            crate::collections::ensure_progress(self.input, rest, "SeparatedIter")
+                        {
+                            return Some(Err(e));
+                        }
+                        self.input = rest;
+                        self.state = SeparatedIterState::Separator;
+                        Some(Ok(Or::Left(Or::Left(item))))
+                    }
+                    Err(err) if err.is_fatal() => Some(Err(err)),
+                    Err(_) => None,
+                }
+            }
+            SeparatedIterState::Separator => {
+                match S::parse_with_context(self.input, self.context) {
+                    Ok((sep, rest)) => {
+                        if let Err(e) =
+                            crate::collections::ensure_progress(self.input, rest, "SeparatedIter")
+                        {
+                            return Some(Err(e));
+                        }
+                        self.input = rest;
+                        self.state = SeparatedIterState::Item;
+                        Some(Ok(Or::Left(Or::Right(sep))))
+                    }
+                    Err(err) if err.is_fatal() => Some(Err(err)),
+                    Err(_) => {
+                        self.state = SeparatedIterState::Done;
+                        Some(Ok(Or::Right(self.input)))
+                    }
+                }
+            }
+            SeparatedIterState::Done => None,
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Separated<T, S> {
@@ -47,31 +124,25 @@ where
         let mut items = Vec::new();
         let mut separators = Vec::new();
         let mut input = input;
-
-        // Parse the required first item.
-        let (first_item, remaining) = T::parse_with_context(input, context)?;
-        crate::collections::ensure_progress(input, remaining, "Separated")?;
-        items.push(first_item);
-        input = remaining;
-
-        loop {
-            // Try to parse a separator.
-            match S::parse_with_context(input, context) {
-                Ok((sep, remaining)) => {
-                    crate::collections::ensure_progress(input, remaining, "Separated")?;
-                    separators.push(sep);
-                    input = remaining;
+        for result in SeparatedIter::new(input, context) {
+            match result {
+                Ok(Or::Left(Or::Left(item))) => items.push(item),
+                Ok(Or::Left(Or::Right(sep))) => separators.push(sep),
+                Ok(Or::Right(rest)) => {
+                    input = rest;
+                    break;
                 }
-                Err(err) if err.is_fatal() => return Err(err),
-                Err(_) => break, // No more separators, we're done.
+                Err(err) => return Err(err),
             }
-
-            // Parse the next item; propagate parse failures after a separator
-            // because trailing separators are disallowed by `Separated`.
-            let (item, remaining) = T::parse_with_context(input, context)?;
-            crate::collections::ensure_progress(input, remaining, "Separated")?;
-            items.push(item);
-            input = remaining;
+        }
+        if separators.len() >= items.len() {
+            let preview = crate::error::preview_input(
+                input.display().as_ref(),
+                crate::error::DEFAULT_INPUT_PREVIEW,
+            );
+            return Err(crate::error::ParseError::custom(format!(
+                "expected an item but found a separator at '{preview}'",
+            )));
         }
 
         Ok((Separated { items, separators }, input))
@@ -131,37 +202,17 @@ where
     ) -> ParseResult<(Self, I)> {
         let mut items = Vec::new();
         let mut separators = Vec::new();
-        let mut input = input;
 
-        match T::parse_with_context(input, context) {
-            Ok((first_item, remaining)) => {
-                crate::collections::ensure_progress(input, remaining, "Separated0")?;
-                items.push(first_item);
-                input = remaining;
-            }
-            Err(err) if err.is_fatal() => return Err(err),
-            Err(_) => {
-                return Ok((Separated0 { items, separators }, input));
-            }
-        }
-
-        loop {
-            match S::parse_with_context(input, context) {
-                Ok((sep, remaining)) => {
-                    crate::collections::ensure_progress(input, remaining, "Separated0")?;
-                    separators.push(sep);
-                    input = remaining;
+        for result in SeparatedIter::new(input, context) {
+            match result {
+                Ok(Or::Left(Or::Left(item))) => items.push(item),
+                Ok(Or::Left(Or::Right(sep))) => separators.push(sep),
+                Ok(Or::Right(rest)) => {
+                    return Ok((Separated0 { items, separators }, rest));
                 }
-                Err(err) if err.is_fatal() => return Err(err),
-                Err(_) => break,
+                Err(err) => return Err(err),
             }
-
-            let (item, remaining) = T::parse_with_context(input, context)?;
-            crate::collections::ensure_progress(input, remaining, "Separated0")?;
-            items.push(item);
-            input = remaining;
         }
-
         Ok((Separated0 { items, separators }, input))
     }
 }
