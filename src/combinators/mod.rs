@@ -6,13 +6,13 @@ pub mod delimited;
 pub mod ignore;
 pub mod keyword;
 pub mod left_assoc;
+pub mod map;
 pub mod not;
 pub mod or;
 pub mod peek;
 pub mod separated;
 pub mod span;
 pub mod ws;
-pub mod map;
 
 pub mod prelude {
     pub use super::and::And;
