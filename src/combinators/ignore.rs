@@ -14,6 +14,8 @@ pub type Forget<T> = Ignore<T>;
 pub type Preceded<P, T> = And<Ignore<P>, T>;
 /// A parser that matches `A` followed by `B`, but only retains the output of `B`.
 pub type Terminated<T, S> = And<T, Ignore<S>>;
+/// A parser that matches `A` followed by `B` followed by `C`, but only retains the output of `B`.
+pub type Between<S, T, E> = And<Ignore<S>, And<T, Ignore<E>>>;
 
 impl<T> Ignore<T> {
     #[must_use]
