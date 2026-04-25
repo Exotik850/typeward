@@ -394,9 +394,10 @@ where
     }
 
     fn advance(self, bytes: usize) -> ParseResult<Self> {
-        let next = self.start.checked_add(bytes).ok_or_else(|| {
-            ParseError::fatal("invalid stream bounds while advancing input")
-        })?;
+        let next = self
+            .start
+            .checked_add(bytes)
+            .ok_or_else(|| ParseError::fatal("invalid stream bounds while advancing input"))?;
 
         if let Some(bound) = self.end
             && next > bound

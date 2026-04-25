@@ -133,7 +133,6 @@ parse_filtered!(NonNegative, |n| n >= 0, i8, i16, i32, i64, i128, isize);
 parse_filtered!(NonPositive, |n| n <= 0, i8, i16, i32, i64, i128, isize);
 parse_filtered!(NonZeroFloat, |n| n != 0.0, f32, f64);
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -168,7 +167,7 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    // is error tests 
+    // is error tests
 
     #[test]
     fn test_positive_error() {
@@ -182,13 +181,15 @@ mod tests {
         assert!(result.is_err());
     }
 
-    // string tests 
+    // string tests
 
     #[test]
     fn test_alpha() {
         let result = AlphaStr::parse("abc");
         assert!(result.is_ok());
-        let result = AlphaStr::parse("abc123");
-        assert!(result.is_err());
+
+        let (parsed, remaining) = AlphaStr::parse("abc123").unwrap();
+        assert_eq!(parsed, "abc");
+        assert_eq!(remaining, "123");
     }
 }

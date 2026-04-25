@@ -112,6 +112,7 @@ struct Wrapper<T>(T);
 ```
 
 Field-level attributes like `#[parse(ws)]` and `#[parse(from(ParserType, mapper))]` customize how each field is parsed.
+Recursive parser shapes are rejected by default; add `#[parse(recursive)]` on the container to opt in when your grammar is structured to consume input at each recursive step.
 
 ## Core Modules
 
@@ -128,7 +129,8 @@ Field-level attributes like `#[parse(ws)]` and `#[parse(from(ParserType, mapper)
 
 The crate provides helper macros for composing parsers ergonomically:
 
-- `and!(A, B, C)` — compose a tuple parser from multiple types
+- `and!(A, B, C)` — compose a tuple parser from multiple types one after another
+- `and_is!(A, B, C)` — compose a parser that checks all parsers on the same input 
 - `or!(A, B, C)` — try parsers in sequence, returning the first match
 - `or_match!(val, arm => expr, ...)` — destructure `Or` results into values
 - `unpack_and!(val, (A, B, C))` — destructure `And` tuple results

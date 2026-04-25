@@ -52,7 +52,7 @@ pub mod prelude {
     };
     pub use crate::primitives::prelude::*;
     pub use crate::token::Token;
-    pub use crate::{and, new_and, or, or_match, unpack_and};
+    pub use crate::{and, and_is, new_and, or, or_match, unpack_and};
     #[cfg(feature = "macros")]
     pub use typeward_macros::Parse;
 }

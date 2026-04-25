@@ -98,7 +98,7 @@ pub(crate) fn build_fields_parse_plan(
         .map(|index| format_ident!("{binding_prefix}_{index}"))
         .collect();
 
-    let parse_tokens = if field_plans.len() == 0 {
+    let parse_tokens = if field_plans.is_empty() {
         quote! {
             let __typeward_remaining = input;
         }
@@ -183,17 +183,21 @@ fn map_parsed_value(
     parser_ty: &Type,
     mapper: &Option<Expr>,
 ) -> TokenStream {
-    if let Some(mapper) = mapper { quote! {
-        let #binding = {
-            fn __typeward_apply_mapper<In, Out>(value: In, mapper: impl FnOnce(In) -> Out) -> Out {
-                mapper(value)
-            }
+    if let Some(mapper) = mapper {
+        quote! {
+            let #binding = {
+                fn __typeward_apply_mapper<In, Out>(value: In, mapper: impl FnOnce(In) -> Out) -> Out {
+                    mapper(value)
+                }
 
-            __typeward_apply_mapper::<#parser_ty, _>(#parsed_binding, #mapper)
-        };
-    } } else { quote! {
-        let #binding = #parsed_binding;
-    } }
+                __typeward_apply_mapper::<#parser_ty, _>(#parsed_binding, #mapper)
+            };
+        }
+    } else {
+        quote! {
+            let #binding = #parsed_binding;
+        }
+    }
 }
 
 pub(crate) fn constructor(
@@ -201,7 +205,11 @@ pub(crate) fn constructor(
     shape: &FieldShape,
     bindings: &[Ident],
 ) -> TokenStream {
-    let ident = if let Some(variant) = prefix { quote!(Self::#variant) } else { quote!(Self) };
+    let ident = if let Some(variant) = prefix {
+        quote!(Self::#variant)
+    } else {
+        quote!(Self)
+    };
 
     match shape {
         FieldShape::Unit => quote!(#ident),

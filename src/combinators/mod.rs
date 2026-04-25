@@ -13,6 +13,7 @@ pub mod ws;
 
 pub mod prelude {
     pub use super::and::And;
+    pub use super::and_is::AndIs;
     pub use super::delim_nested::{Braced, Bracketed, DelimNested, Parenthesized};
     pub use super::delimited::{Delimited, DelimitedExact, Padded, PaddedExact};
     pub use super::ignore::{Forget, Ignore, Preceded, Terminated};
