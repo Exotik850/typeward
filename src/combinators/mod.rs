@@ -12,6 +12,7 @@ pub mod peek;
 pub mod separated;
 pub mod span;
 pub mod ws;
+pub mod map;
 
 pub mod prelude {
     pub use super::and::And;
