@@ -124,7 +124,7 @@ where
         input: I,
         _context: &mut crate::parse::ParseOffsetContext,
     ) -> ParseResult<(Self, I)> {
-        let (value, rest) = input.take_till_str(T::VALUE)?;
+        let (value, rest) = input.take_till(T::VALUE)?;
         Ok((
             Self {
                 value: S::from_input_str(value)?,
