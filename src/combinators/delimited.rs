@@ -109,7 +109,7 @@ impl<'a, In, S, E, I> Parse<'a, In> for DelimitedExact<S, E, I>
 where
     In: crate::parse::ParseOffsetInput<'a>,
     S: Parse<'a, In>,
-    E: crate::token::Token + Parse<'a, In>,
+    E: Parse<'a, In>,
     I: Parse<'a, In>,
 {
     #[inline]
@@ -118,37 +118,8 @@ where
         context: &mut crate::parse::ParseOffsetContext,
     ) -> ParseResult<(Self, In)> {
         let (start, remaining) = S::parse_with_context(input, context)?;
-
-        let end_match = remaining.find(E::VALUE)?;
-        let (inner_input, close_start) = if let Some(match_input) = end_match {
-            let inner_val = remaining.slice_to(match_input)?;
-            (inner_val, match_input)
-        } else {
-            let start_offset = crate::parse::current_parse_offset(context, remaining);
-            return Err(crate::error::ParseError::custom(format!(
-                "delimited exact: missing closing token `{}`",
-                E::VALUE
-            ))
-            .with_span(start_offset));
-        };
-
-        let (inner, inner_rest) = I::parse_with_context(inner_input, context)?;
-        if !inner_rest.is_empty() {
-            let start = crate::parse::current_parse_offset(context, inner_rest);
-            let span =
-                crate::error::SourceSpan::new(start, start.saturating_add(inner_rest.input_len()));
-            let preview = crate::error::preview_input(
-                inner_rest.display().as_ref(),
-                crate::error::DEFAULT_INPUT_PREVIEW,
-            );
-            return Err(crate::error::ParseError::custom(format!(
-                "unexpected trailing input inside delimited exact: '{preview}'"
-            ))
-            .with_span(span));
-        }
-
-        let (end, remaining) = E::parse_with_context(close_start, context)?;
-
+        let (inner, remaining) = I::parse_with_context(remaining, context)?;
+        let (end, remaining) = E::parse_with_context(remaining, context)?;
         Ok((DelimitedExact { start, end, inner }, remaining))
     }
 }
