@@ -4,7 +4,7 @@ use std::borrow::Cow;
 macro_rules! filter_str {
     ($name:ident, $filter:expr) => {
         #[derive(Debug, Eq, Clone, Hash, Default, PartialOrd, Ord)]
-        pub struct $name<S>
+        pub struct $name<S = String>
         where
             S: AsRef<str>,
         {
