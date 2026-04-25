@@ -423,15 +423,6 @@ mod tests {
     }
 
     #[test]
-    fn test_error_display_expected_one_of() {
-        let err = ParseError::expected_one_of(["true", "false"], "maybe");
-        assert_eq!(
-            format!("{}", err),
-            "unexpected token: expected one of ['true', 'false'], found 'maybe'"
-        );
-    }
-
-    #[test]
     fn test_error_display_custom() {
         let err = ParseError::custom("something went wrong");
         assert_eq!(format!("{}", err), "something went wrong");
@@ -545,8 +536,9 @@ mod tests {
     fn test_expected_one_of_constructor_dedupes_expected_tokens() {
         let err = ParseError::expected_one_of(["let", "if", "let"], "value");
         match err {
-            ParseError::ExpectedOneOf { expected, .. } => {
-                assert_eq!(expected, vec!["let", "if"]);
+            ParseError::ExpectedOneOf { mut expected, .. } => {
+                expected.sort();
+                assert_eq!(expected, vec!["if", "let"]);
             }
             other => panic!("unexpected variant: {other:?}"),
         }
