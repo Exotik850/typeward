@@ -129,7 +129,7 @@ where
                 "delimited exact: missing closing token `{}`",
                 E::VALUE
             ))
-            .with_span(crate::error::SourceSpan::point(start_offset)));
+            .with_span(start_offset));
         };
 
         let (inner, inner_rest) = I::parse_with_context(inner_input, context)?;

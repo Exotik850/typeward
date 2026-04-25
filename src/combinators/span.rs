@@ -76,7 +76,7 @@ where
                     let span = SourceSpan::from_start_len(start, consumed);
                     Ok((Self::new(parsed, span), rest))
                 }
-                Err(err) => Err(err.with_span(SourceSpan::point(start))),
+                Err(err) => Err(err.with_span(start)),
             }
         })
     }

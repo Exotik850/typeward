@@ -80,8 +80,7 @@ where
 
         let Some(rest) = input.strip_prefix(T::VALUE)? else {
             let found = input.display();
-            return Err(ParseError::unexpected_token(T::VALUE, found.as_ref())
-                .with_span(SourceSpan::point(start)));
+            return Err(ParseError::unexpected_token(T::VALUE, found.as_ref()).with_span(start));
         };
 
         if let Some((next, _)) = rest.take_char()?

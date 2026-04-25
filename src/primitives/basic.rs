@@ -1,9 +1,6 @@
 use std::borrow::Cow;
 
-use crate::{
-    error::SourceSpan,
-    parse::{ParseOffsetInput, current_parse_offset},
-};
+use crate::parse::{ParseOffsetInput, current_parse_offset};
 use crate::{input::Input, parse::Parse};
 
 pub type Empty = ();
@@ -69,7 +66,7 @@ where
             Err(crate::error::ParseError::custom(format!(
                 "expected end of input, but found '{preview}'"
             ))
-            .with_span(SourceSpan::point(start)))
+            .with_span(start))
         }
     }
 }
@@ -92,8 +89,7 @@ where
         context: &mut crate::parse::ParseOffsetContext,
     ) -> crate::error::ParseResult<(Self, I)> {
         let start = current_parse_offset(context, input);
-        Err(crate::error::ParseError::custom("`Fail` always fails")
-            .with_span(SourceSpan::point(start)))
+        Err(crate::error::ParseError::custom("`Fail` always fails").with_span(start))
     }
 }
 

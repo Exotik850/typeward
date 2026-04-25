@@ -1,5 +1,5 @@
 use crate::{
-    error::{ParseError, SourceSpan},
+    error::ParseError,
     parse::{Parse, ParseOffsetContext, ParseOffsetInput, current_parse_offset},
 };
 
@@ -57,7 +57,7 @@ where
         } else {
             let found = input.display();
             Err(ParseError::unexpected_token(Self::VALUE, found.as_ref())
-                .with_span(SourceSpan::point(current_parse_offset(context, input))))
+                .with_span(current_parse_offset(context, input)))
         }
     }
 }
@@ -75,8 +75,7 @@ where
     ) -> Result<(Self, I), ParseError> {
         match input.take_char()? {
             Some((c, rest)) => Ok((c, rest)),
-            None => Err(ParseError::UnexpectedEOF
-                .with_span(SourceSpan::point(current_parse_offset(context, input)))),
+            None => Err(ParseError::UnexpectedEOF.with_span(current_parse_offset(context, input))),
         }
     }
 }
@@ -135,7 +134,7 @@ mod tests {
         let result = char::parse(input);
         let err = result.unwrap_err();
         assert_eq!(err.root_cause(), &ParseError::UnexpectedEOF);
-        assert_eq!(err.span(), Some(SourceSpan::point(0)));
+        assert_eq!(err.span(), Some(crate::error::SourceSpan::point(0)));
     }
 
     #[test]

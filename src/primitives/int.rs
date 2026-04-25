@@ -22,7 +22,7 @@ macro_rules! parse_unsigned {
                             "expected ",
                             stringify!($ty)
                         ))
-                        .with_span(SourceSpan::point(start)));
+                        .with_span(start));
                     }
 
                     match result.parse::<$ty>() {
@@ -73,7 +73,7 @@ macro_rules! parse_signed {
                             "expected ",
                             stringify!($ty)
                         ))
-                        .with_span(SourceSpan::point(start)));
+                        .with_span(start));
                     }
 
                     let start = current_parse_offset(context, input);

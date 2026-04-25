@@ -130,7 +130,7 @@ where
                 Right::VALUE,
                 Left::VALUE,
             ))
-            .with_span(SourceSpan::point(start)));
+            .with_span(start));
         };
 
         let inner_input = inner_start.slice_to(close_start)?;

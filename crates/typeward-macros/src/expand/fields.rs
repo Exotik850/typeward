@@ -218,7 +218,7 @@ fn map_parsed_value(
                 // These are needed to give the compiler
                 // the info it needs to type-check the mappers, but they get optimized away.
                 // This allows for closures without needing explicit type annotations.
-                
+
                 fn __typeward_apply_mapper<In, Out>(value: In, mapper: impl FnOnce(In) -> Out) -> Out {
                     mapper(value)
                 }

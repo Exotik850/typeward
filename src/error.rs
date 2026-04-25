@@ -109,6 +109,12 @@ impl SourceSpan {
     }
 }
 
+impl From<usize> for SourceSpan {
+    fn from(offset: usize) -> Self {
+        Self::point(offset)
+    }
+}
+
 impl From<Range<usize>> for SourceSpan {
     fn from(range: Range<usize>) -> Self {
         Self::range(range)
@@ -284,7 +290,8 @@ impl ParseError {
 
     /// Attach a span to this error if it does not already carry one.
     #[must_use]
-    pub fn with_span(self, span: SourceSpan) -> Self {
+    pub fn with_span(self, span: impl Into<SourceSpan>) -> Self {
+        let span = span.into();
         match self {
             ParseError::WithSpan { .. } => self,
             source => ParseError::WithSpan {
@@ -430,7 +437,7 @@ mod tests {
 
     #[test]
     fn test_error_display_with_span() {
-        let err = ParseError::custom("something went wrong").with_span(SourceSpan::new(3, 6));
+        let err = ParseError::custom("something went wrong").with_span(3..6);
         assert_eq!(format!("{}", err), "something went wrong at offsets 3..6");
     }
 
@@ -456,22 +463,22 @@ mod tests {
 
     #[test]
     fn test_error_span_accessors() {
-        let err = ParseError::UnexpectedEOF.with_span(SourceSpan::point(10));
+        let err = ParseError::UnexpectedEOF.with_span(10);
         assert_eq!(err.span(), Some(SourceSpan::point(10)));
         assert_eq!(err.root_cause(), &ParseError::UnexpectedEOF);
     }
 
     #[test]
     fn test_error_farthest_prefers_later_span() {
-        let left = ParseError::custom("left").with_span(SourceSpan::point(3));
-        let right = ParseError::custom("right").with_span(SourceSpan::point(7));
+        let left = ParseError::custom("left").with_span(3);
+        let right = ParseError::custom("right").with_span(7);
 
         assert_eq!(left.farthest(right.clone()), right);
     }
 
     #[test]
     fn test_error_farthest_prefers_spanned_error() {
-        let left = ParseError::custom("left").with_span(SourceSpan::point(3));
+        let left = ParseError::custom("left").with_span(3);
         let right = ParseError::custom("right");
 
         assert_eq!(left.clone().farthest(right), left);
@@ -479,8 +486,8 @@ mod tests {
 
     #[test]
     fn test_error_farthest_prefers_other_on_tie() {
-        let left = ParseError::custom("left").with_span(SourceSpan::new(3, 5));
-        let right = ParseError::custom("right").with_span(SourceSpan::new(3, 5));
+        let left = ParseError::custom("left").with_span(3..5);
+        let right = ParseError::custom("right").with_span(3..5);
 
         assert_eq!(left.farthest(right.clone()), right);
     }
@@ -547,7 +554,7 @@ mod tests {
     #[test]
     fn test_render_with_source_includes_line_context() {
         let source = "let alpha = 1;\nlet beta = ;\n";
-        let err = ParseError::custom("expected expression").with_span(SourceSpan::point(25));
+        let err = ParseError::custom("expected expression").with_span(25);
         let rendered = err.render_with_source(source);
 
         assert!(rendered.contains("line 2, column 11"));

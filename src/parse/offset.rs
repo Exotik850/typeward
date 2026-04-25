@@ -1,5 +1,5 @@
+use crate::error::ParseResult;
 use crate::input::{Input, ReadInput, ReadInputStreamInput};
-use crate::{error::ParseResult, error::SourceSpan};
 use std::cmp::Reverse;
 
 /// Anchor metadata used to compute absolute parser offsets.
@@ -108,7 +108,7 @@ where
         let message =
             format!("recursive parser `{parser_name}` made no progress at offset {offset}");
         return Err(crate::error::ParseError::custom(message)
-            .with_span(SourceSpan::point(offset))
+            .with_span(offset)
             .into_fatal());
     }
 
@@ -288,7 +288,7 @@ mod tests {
             .expect_err("expected recursion guard error");
 
             assert!(err.is_fatal());
-            assert_eq!(err.span(), Some(SourceSpan::point(0)));
+            assert_eq!(err.span(), Some(crate::error::SourceSpan::point(0)));
             assert!(err.to_string().contains("made no progress"));
         });
     }

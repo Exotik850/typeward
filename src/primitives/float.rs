@@ -1,5 +1,5 @@
 use crate::{
-    error::{ParseResult, SourceSpan},
+    error::ParseResult,
     input::Input,
     parse::{Parse, ParseOffsetInput, current_parse_offset},
 };
@@ -51,7 +51,7 @@ macro_rules! parse_float {
                             "expected ",
                             stringify!($ty)
                         ))
-                        .with_span(SourceSpan::point(start)));
+                        .with_span(start));
                     };
 
                     Ok((num, rest))
@@ -118,6 +118,6 @@ mod tests {
     #[test]
     fn test_f64_parse_invalid_has_span() {
         let err = f64::parse("nope").unwrap_err();
-        assert_eq!(err.span(), Some(SourceSpan::point(0)));
+        assert_eq!(err.span(), Some(crate::error::SourceSpan::point(0)));
     }
 }

@@ -25,7 +25,9 @@ pub mod prelude {
     pub use super::not::Not;
     pub use super::or::{Either, Or};
     pub use super::peek::Peek;
-    pub use super::separated::{CommaSeparated, CommaSeparated0, Separated, Separated0, SeparatedIter};
+    pub use super::separated::{
+        CommaSeparated, CommaSeparated0, Separated, Separated0, SeparatedIter,
+    };
     pub use super::span::{Span, SpanExt};
     pub use super::ws::{Ws, WsExt};
 }
