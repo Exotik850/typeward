@@ -1,4 +1,4 @@
-use crate::{error::ParseResult, parse::Parse, prelude::Separated};
+use crate::{combinators::separated::SeparatedExact, error::ParseResult, parse::Parse};
 
 /// A combinator for left-associative operations, such as addition or multiplication.
 ///
@@ -24,7 +24,7 @@ where
         input: I,
         _context: &mut crate::parse::ParseOffsetContext,
     ) -> ParseResult<(Self, I)> {
-        let (seq, rest) = Separated::<R, O>::parse(input)?;
+        let (seq, rest) = SeparatedExact::<R, O>::parse(input)?;
         let (rhs, operators) = seq.into_parts();
         let mut rhs = rhs.into_iter();
         let first = rhs.next().ok_or_else(|| {

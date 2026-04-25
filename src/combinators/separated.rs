@@ -77,38 +77,47 @@ where
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Separated<T, S> {
-    pub items: Vec<T>,
-    pub separators: Vec<S>,
+macro_rules! separated_type {
+    ($(#[$attr:meta])* $name:ident) => {
+        #[derive(Debug, Clone, PartialEq, Eq)]
+        /// A parser that matches a sequence of `T` separated by `S`.
+        ///
+        $(#[$attr])*
+        pub struct $name<T, S> {
+            pub items: Vec<T>,
+            pub separators: Vec<S>,
+        }
+
+        impl<T, S> $name<T, S> {
+            #[must_use]
+            pub fn new(items: Vec<T>, separators: Vec<S>) -> Self {
+                Self { items, separators }
+            }
+            #[must_use]
+            pub fn items(&self) -> &[T] {
+                &self.items
+            }
+            #[must_use]
+            pub fn separators(&self) -> &[S] {
+                &self.separators
+            }
+            #[must_use]
+            pub fn into_items(self) -> Vec<T> {
+                self.items
+            }
+            #[must_use]
+            pub fn into_separators(self) -> Vec<S> {
+                self.separators
+            }
+            #[must_use]
+            pub fn into_parts(self) -> (Vec<T>, Vec<S>) {
+                (self.items, self.separators)
+            }
+        }
+    };
 }
 
-impl<T, S> Separated<T, S> {
-    #[must_use]
-    pub fn new(items: Vec<T>, separators: Vec<S>) -> Self {
-        Self { items, separators }
-    }
-    #[must_use]
-    pub fn items(&self) -> &[T] {
-        &self.items
-    }
-    #[must_use]
-    pub fn separators(&self) -> &[S] {
-        &self.separators
-    }
-    #[must_use]
-    pub fn into_items(self) -> Vec<T> {
-        self.items
-    }
-    #[must_use]
-    pub fn into_separators(self) -> Vec<S> {
-        self.separators
-    }
-    #[must_use]
-    pub fn into_parts(self) -> (Vec<T>, Vec<S>) {
-        (self.items, self.separators)
-    }
-}
+separated_type!(Separated);
 
 impl<'a, I, T, S> Parse<'a, I> for Separated<T, S>
 where
@@ -121,73 +130,23 @@ where
         input: I,
         context: &mut crate::parse::ParseOffsetContext,
     ) -> ParseResult<(Self, I)> {
-        let mut items = Vec::new();
-        let mut separators = Vec::new();
-        let mut input = input;
-        for result in SeparatedIter::new(input, context) {
-            match result {
-                Ok(Or::Left(Or::Left(item))) => items.push(item),
-                Ok(Or::Left(Or::Right(sep))) => separators.push(sep),
-                Ok(Or::Right(rest)) => {
-                    input = rest;
-                    break;
-                }
-                Err(err) => return Err(err),
-            }
+        let (Separated0 { items, separators }, input) =
+            Separated0::<T, S>::parse_with_context(input, context)?;
+        if items.is_empty() {
+            return Err(crate::error::ParseError::custom(
+                "Separated: expected at least one item",
+            ));
         }
-        if separators.len() >= items.len() {
-            let preview = crate::error::preview_input(
-                input.display().as_ref(),
-                crate::error::DEFAULT_INPUT_PREVIEW,
-            );
-            return Err(crate::error::ParseError::custom(format!(
-                "expected an item but found a separator at '{preview}'",
-            )));
-        }
-
         Ok((Separated { items, separators }, input))
     }
 }
 
 pub type CommaSeparated<T> = Separated<T, Comma>;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Separated0<T, S> {
-    pub items: Vec<T>,
-    pub separators: Vec<S>,
-}
-
-impl<T, S> Separated0<T, S> {
-    #[must_use]
-    pub fn new(items: Vec<T>, separators: Vec<S>) -> Self {
-        Self { items, separators }
-    }
-
-    #[must_use]
-    pub fn items(&self) -> &[T] {
-        &self.items
-    }
-
-    #[must_use]
-    pub fn separators(&self) -> &[S] {
-        &self.separators
-    }
-
-    #[must_use]
-    pub fn into_items(self) -> Vec<T> {
-        self.items
-    }
-
-    #[must_use]
-    pub fn into_separators(self) -> Vec<S> {
-        self.separators
-    }
-
-    #[must_use]
-    pub fn into_parts(self) -> (Vec<T>, Vec<S>) {
-        (self.items, self.separators)
-    }
-}
+separated_type!(
+    /// Allows trailing separators, and can match an empty sequence.
+    Separated0
+);
 
 impl<'a, I, T, S> Parse<'a, I> for Separated0<T, S>
 where
@@ -202,7 +161,6 @@ where
     ) -> ParseResult<(Self, I)> {
         let mut items = Vec::new();
         let mut separators = Vec::new();
-
         for result in SeparatedIter::new(input, context) {
             match result {
                 Ok(Or::Left(Or::Left(item))) => items.push(item),
@@ -218,6 +176,65 @@ where
 }
 
 pub type CommaSeparated0<T> = Separated0<T, Comma>;
+
+separated_type!(
+    /// does not allow trailing separators.
+    SeparatedExact
+);
+
+impl<'a, I, T, S> Parse<'a, I> for SeparatedExact<T, S>
+where
+    I: crate::input::Input<'a>,
+    T: Parse<'a, I>,
+    S: Parse<'a, I>,
+{
+    #[inline]
+    fn parse_with_context(
+        input: I,
+        context: &mut crate::parse::ParseOffsetContext,
+    ) -> ParseResult<(Self, I)> {
+        let (Separated0 { items, separators }, input) =
+            Separated0::<T, S>::parse_with_context(input, context)?;
+        if items.is_empty() {
+            return Err(crate::error::ParseError::custom(
+                "SeparatedExact: expected at least one item",
+            ));
+        }
+        if items.len() != separators.len() + 1 {
+            return Err(crate::error::ParseError::custom(
+                "SeparatedExact: expected no trailing separator",
+            ));
+        }
+        Ok((SeparatedExact { items, separators }, input))
+    }
+}
+
+separated_type!(
+    /// Does not allow trailing separators, and can match an empty sequence.
+    SeparatedExact0
+);
+
+impl<'a, I, T, S> Parse<'a, I> for SeparatedExact0<T, S>
+where
+    I: crate::input::Input<'a>,
+    T: Parse<'a, I>,
+    S: Parse<'a, I>,
+{
+    #[inline]
+    fn parse_with_context(
+        input: I,
+        context: &mut crate::parse::ParseOffsetContext,
+    ) -> ParseResult<(Self, I)> {
+        let (Separated0 { items, separators }, input) =
+            Separated0::<T, S>::parse_with_context(input, context)?;
+        if items.len() != separators.len() + 1 && !items.is_empty() {
+            return Err(crate::error::ParseError::custom(
+                "SeparatedExact0: expected no trailing separator",
+            ));
+        }
+        Ok((SeparatedExact0 { items, separators }, input))
+    }
+}
 
 #[cfg(test)]
 mod tests {
