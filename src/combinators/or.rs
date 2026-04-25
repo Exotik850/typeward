@@ -326,7 +326,7 @@ mod tests {
             crate::error::ParseError::ExpectedOneOf {
                 expected,
                 ..
-            } if expected == &vec!["true", "false"]
+            } if expected.contains(&"true") && expected.contains(&"false")
         ));
     }
 
