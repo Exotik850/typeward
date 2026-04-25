@@ -72,6 +72,23 @@ pub trait Input<'a>: Copy + Sized {
     fn take_till<P>(self, predicate: P) -> ParseResult<(Cow<'a, str>, Self)>
     where
         P: for<'b> Pattern<'b> + Copy;
+
+    /// Consumes input until the literal `needle` is encountered.
+    ///
+    /// This defaults to `find + slice_to` and can be overridden by input
+    /// implementations for additional optimization.
+    fn take_till_str(self, needle: &str) -> ParseResult<(Cow<'a, str>, Self)> {
+        if needle.is_empty() {
+            return Ok((Cow::Borrowed(""), self));
+        }
+
+        if let Some(rest) = self.find(needle)? {
+            let segment = self.slice_to(rest)?;
+            Ok((segment.display(), rest))
+        } else {
+            self.take_till(|_: char| false)
+        }
+    }
 }
 
 /// Marker trait for inputs whose matched text can be borrowed from the source.
