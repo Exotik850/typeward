@@ -30,6 +30,9 @@ where
 {
     #[must_use]
     pub fn new(reader: R) -> Self {
+        const {
+            assert!(N > 0, "ReadInputStream requires a non-zero buffer size");
+        }
         Self {
             reader: RefCell::new(reader),
             buf: RefCell::new([0_u8; N]),
@@ -54,16 +57,6 @@ where
         ))
     }
 
-    fn ensure_non_zero_window() -> ParseResult<()> {
-        if N == 0 {
-            return Err(ParseError::fatal(
-                "ReadInputStream requires a non-zero buffer size",
-            ));
-        }
-
-        Ok(())
-    }
-
     fn loaded_end(&self) -> usize {
         self.window_start
             .get()
@@ -71,8 +64,6 @@ where
     }
 
     fn read_into_window(&self) -> ParseResult<usize> {
-        Self::ensure_non_zero_window()?;
-
         let start = self.window_start.get();
         let len = self.window_len.get();
         let tail = (start + len) % N;
@@ -267,12 +258,6 @@ where
     }
 
     fn collect_loaded_segment_preview(self) -> ParseResult<(Vec<u8>, bool)> {
-        if N == 0 {
-            return Err(ParseError::fatal(
-                "ReadInputStream requires a non-zero buffer size",
-            ));
-        }
-
         let window_start = self.stream.window_start.get();
         if self.start < window_start {
             return Err(ReadInputStream::<R, N>::replay_error());
