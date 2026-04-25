@@ -616,7 +616,7 @@ mod tests {
 
     #[test]
     fn stream_or_backtracking_is_not_corrupted_by_error_previews() {
-        type BoolKeyword = crate::or!(crate::literals::KwTrue, crate::literals::KwFalse);
+        type BoolKeyword = crate::or!(crate::literals::True, crate::literals::False);
 
         let stream = ReadInputStream::<_, 2>::new(Cursor::new(b"false"));
         let parsed = parse_complete_input::<_, BoolKeyword>(stream.as_input()).unwrap();

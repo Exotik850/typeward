@@ -9,7 +9,7 @@ type JsonObject = Delimited<Ws<LBrace>, Ws<RBrace>, Separated0<JsonMember, Ws<Co
 #[derive(Debug, Clone, PartialEq, Parse)]
 #[parse(recursive)]
 pub enum JsonValue {
-    Null(Ws<KwNull>),
+    Null(Ws<Null>),
     Bool(Ws<bool>),
     Number(Ws<f64>),
     String(JsonString),
@@ -85,7 +85,7 @@ mod tests {
     fn parse_scalar_values() {
         assert_eq!(
             parse_json("null").unwrap(),
-            JsonValue::Null(Ws::new(KwNull))
+            JsonValue::Null(Ws::new(Null))
         );
         assert_eq!(parse_json("true").unwrap(), JsonValue::Bool(Ws::new(true)));
         assert_eq!(

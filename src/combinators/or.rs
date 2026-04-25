@@ -208,7 +208,7 @@ pub type Alt<A, B> = Or<A, B>;
 #[cfg(test)]
 mod tests {
     use crate::combinators::ws::Ws;
-    use crate::literals::{KwFalse, KwNull, KwTrue};
+    use crate::literals::*;
     use crate::parse::parse_complete;
     use crate::primitives::prelude::*;
 
@@ -318,7 +318,7 @@ mod tests {
 
     #[test]
     fn test_alt_error_tie_merges_expected_tokens() {
-        type AltType = or!(KwTrue, KwFalse);
+        type AltType = or!(True, False);
         let err = parse_complete::<AltType>("maybe").unwrap_err();
 
         assert!(matches!(
@@ -332,7 +332,7 @@ mod tests {
 
     #[test]
     fn test_alt_error_prefers_spanned_over_unspanned() {
-        type AltType = or!(i64, KwNull);
+        type AltType = or!(i64, Null);
         let err = parse_complete::<AltType>("abc").unwrap_err();
 
         assert_eq!(err.span(), Some(crate::error::SourceSpan::point(0)));
@@ -347,7 +347,7 @@ mod tests {
 
     #[test]
     fn test_alt_error_keeps_first_when_second_is_unspanned() {
-        type AltType = or!(KwNull, UnspannedError);
+        type AltType = or!(Null, UnspannedError);
         let err = parse_complete::<AltType>("abc").unwrap_err();
 
         assert_eq!(err.span(), Some(crate::error::SourceSpan::point(0)));

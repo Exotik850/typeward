@@ -109,7 +109,7 @@ where
 #[cfg(test)]
 mod tests {
     use crate::{
-        literals::{Comma, KwNull},
+        literals::{Comma, Null},
         parse::Parse,
     };
 
@@ -117,22 +117,22 @@ mod tests {
 
     #[test]
     fn keyword_accepts_boundary_end_of_input() {
-        let (kw, rest) = Kw::<KwNull>::parse("null").unwrap();
-        assert_eq!(kw, KwNull);
+        let (kw, rest) = Kw::<Null>::parse("null").unwrap();
+        assert_eq!(kw, Null);
         assert_eq!(rest, "");
     }
 
     #[test]
     fn keyword_accepts_boundary_punctuation() {
-        let (kw, rest) = Kw::<KwNull>::parse("null,").unwrap();
-        assert_eq!(kw, KwNull);
+        let (kw, rest) = Kw::<Null>::parse("null,").unwrap();
+        assert_eq!(kw, Null);
         let (_comma, rest) = Comma::parse(rest).unwrap();
         assert_eq!(rest, "");
     }
 
     #[test]
     fn keyword_rejects_identifier_continuation() {
-        let err = Kw::<KwNull>::parse("nullish").unwrap_err();
+        let err = Kw::<Null>::parse("nullish").unwrap_err();
         assert_eq!(err.span(), Some(SourceSpan::new(0, 5)));
         assert!(
             err.to_string()

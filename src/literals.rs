@@ -1,12 +1,12 @@
-use crate::define_tokens;
+use crate::{define_tokens, prelude::Kw};
 
 define_tokens!(
     /// The `true` boolean literal token.
-    KwTrue, "true";
+    True, "true";
     /// The `false` boolean literal token.
-    KwFalse, "false";
+    False, "false";
     /// The `null` literal token.
-    KwNull, "null";
+    Null, "null";
     /// The `(` left parenthesis token.
     LParen, "(";
     /// The `)` right parenthesis token.
@@ -76,6 +76,10 @@ define_tokens!(
     /// The ` ` space character token.
     Space, " ";
 );
+
+pub type KwTrue = Kw<True>;
+pub type KwFalse = Kw<False>;
+pub type KwNull = Kw<Null>;
 
 /// A helper macro for defining single-character tokens, which can be parsed directly from the input without needing to match a longer string.
 macro_rules! define_char_token {

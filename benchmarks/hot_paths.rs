@@ -6,7 +6,7 @@ use criterion::{
 };
 use typeward::prelude::*;
 
-type ScalarValue = or!(Ws<KwNull>, Ws<bool>, Ws<f64>);
+type ScalarValue = or!(Ws<Null>, Ws<bool>, Ws<f64>);
 type IntList = Delimited<Ws<LBracket>, Ws<RBracket>, Separated0<Ws<i64>, Ws<Comma>>>;
 
 fn build_int_list_input(count: usize) -> String {

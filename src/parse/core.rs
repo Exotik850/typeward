@@ -262,7 +262,7 @@ mod tests {
     use crate::combinators::ws::Ws;
     use crate::error::SourceSpan;
     use crate::lit_token;
-    use crate::literals::KwNull;
+    use crate::literals::Null;
 
     lit_token!(HelloParser, "hello");
 
@@ -333,7 +333,7 @@ mod tests {
 
     #[test]
     fn test_parse_tracks_error_offset() {
-        type Parser = crate::and!(Ws<i64>, Ws<KwNull>);
+        type Parser = crate::and!(Ws<i64>, Ws<Null>);
         let err = Parser::parse("42 nope").unwrap_err();
         assert_eq!(err.span(), Some(SourceSpan::point(3)));
     }

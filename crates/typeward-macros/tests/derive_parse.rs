@@ -12,22 +12,22 @@ fn non_zero(value: i64) -> Result<std::num::NonZeroI64, &'static str> {
 #[derive(Debug, PartialEq, Parse)]
 struct NamedPair {
     left: Ws<i64>,
-    right: Ws<KwNull>,
+    right: Ws<Null>,
 }
 
 #[derive(Debug, PartialEq, Parse)]
-struct TuplePair(Ws<KwTrue>, Ws<i64>);
+struct TuplePair(Ws<True>, Ws<i64>);
 
 #[derive(Debug, PartialEq, Parse)]
 enum Value {
-    Null(Ws<KwNull>),
+    Null(Ws<Null>),
     Number(Ws<i64>),
     Identifier(Ws<IdentifierString>),
 }
 
 #[derive(Debug, PartialEq, Parse)]
 enum CompositeValue {
-    Pair { left: Ws<KwTrue>, value: Ws<i64> },
+    Pair { left: Ws<True>, value: Ws<i64> },
     Word(Ws<IdentifierString>),
 }
 
@@ -37,7 +37,7 @@ where
     T: Clone,
 {
     inner: Ws<T>,
-    end: Ws<KwNull>,
+    end: Ws<Null>,
 }
 
 #[derive(Debug, PartialEq, Parse)]
@@ -76,17 +76,17 @@ struct WsAttributeNamed {
     #[parse(ws)]
     left: i64,
     #[parse(ws)]
-    right: KwNull,
+    right: Null,
 }
 
 #[derive(Debug, PartialEq, Parse)]
-struct WsAttributeTuple(#[parse(ws)] KwTrue, #[parse(ws)] i64);
+struct WsAttributeTuple(#[parse(ws)] True, #[parse(ws)] i64);
 
 #[derive(Debug, PartialEq, Parse)]
 enum WsAttributeEnum {
     Pair {
         #[parse(ws)]
-        left: KwTrue,
+        left: True,
         #[parse(ws)]
         value: i64,
     },
@@ -129,13 +129,13 @@ struct FromTypeOnlyField {
 fn derive_parse_named_struct_uses_and_semantics() {
     let parsed = parse_complete::<NamedPair>("42 null").unwrap();
     assert_eq!(parsed.left, 42);
-    assert_eq!(parsed.right, KwNull);
+    assert_eq!(parsed.right, Null);
 }
 
 #[test]
 fn derive_parse_tuple_struct_uses_and_semantics() {
     let parsed = parse_complete::<TuplePair>("true 7").unwrap();
-    assert_eq!(parsed.0, KwTrue);
+    assert_eq!(parsed.0, True);
     assert_eq!(parsed.1, 7);
 }
 
@@ -204,13 +204,13 @@ fn derive_parse_with_generic_field_from_attribute() {
 fn derive_parse_field_ws_attribute_for_named_struct() {
     let parsed = parse_complete::<WsAttributeNamed>("   42   null").unwrap();
     assert_eq!(parsed.left, 42);
-    assert_eq!(parsed.right, KwNull);
+    assert_eq!(parsed.right, Null);
 }
 
 #[test]
 fn derive_parse_field_ws_attribute_for_tuple_struct() {
     let parsed = parse_complete::<WsAttributeTuple>("   true   7").unwrap();
-    assert_eq!(parsed.0, KwTrue);
+    assert_eq!(parsed.0, True);
     assert_eq!(parsed.1, 7);
 }
 

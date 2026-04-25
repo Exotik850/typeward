@@ -68,12 +68,12 @@ mod tests {
     use super::*;
     use crate::combinators::ws::Ws;
     use crate::error::SourceSpan;
-    use crate::literals::{KwNull, KwTrue};
+    use crate::literals::*;
     use crate::parse::Parse;
 
     #[test]
     fn cut_promotes_recoverable_errors_to_fatal() {
-        type Parser = Cut<Ws<KwNull>>;
+        type Parser = Cut<Ws<Null>>;
 
         let err = Parser::parse("nope").unwrap_err();
         assert!(err.is_fatal());
@@ -81,7 +81,7 @@ mod tests {
 
     #[test]
     fn cut_commits_alternative_branch() {
-        type Parser = crate::or!(crate::and!(KwTrue, Cut<Ws<KwNull>>), KwTrue);
+        type Parser = crate::or!(crate::and!(KwTrue, Cut<Ws<KwNull>>), True);
 
         let err = Parser::parse("true nope").unwrap_err();
         assert!(err.is_fatal());
@@ -89,7 +89,7 @@ mod tests {
 
     #[test]
     fn cut_commits_repetition_items() {
-        type Item = Cut<crate::and!(Ws<i64>, Ws<KwNull>)>;
+        type Item = Cut<crate::and!(Ws<i64>, Ws<Null>)>;
 
         let err = Vec::<Item>::parse("1 null 2 nope").unwrap_err();
         assert!(err.is_fatal());

@@ -64,7 +64,7 @@ mod tests {
     use crate::error::SourceSpan;
     use crate::input::ReadInputBuf;
     use crate::lit_token;
-    use crate::literals::KwNull;
+    use crate::literals::Null;
     use std::io::Cursor;
 
     lit_token!(HelloParser, "hello");
@@ -133,7 +133,7 @@ mod tests {
 
     #[test]
     fn test_parse_complete_tracks_nested_span_offset() {
-        type Parser = crate::and!(Ws<i64>, Span<Ws<KwNull>>);
+        type Parser = crate::and!(Ws<i64>, Span<Ws<Null>>);
         let result = parse_complete::<Parser>("42 null").unwrap();
         let null = result.right;
         assert_eq!(null.span, SourceSpan::new(2, 7));
@@ -141,7 +141,7 @@ mod tests {
 
     #[test]
     fn test_parse_complete_tracks_error_offset() {
-        type Parser = crate::and!(Ws<i64>, Ws<KwNull>);
+        type Parser = crate::and!(Ws<i64>, Ws<Null>);
         let err = parse_complete::<Parser>("42 nope").unwrap_err();
         assert_eq!(err.span(), Some(SourceSpan::point(3)));
     }
@@ -155,7 +155,7 @@ mod tests {
 
     #[test]
     fn test_parse_offset_tracking_is_thread_safe() {
-        type Parser = crate::and!(Ws<i64>, Span<Ws<KwNull>>);
+        type Parser = crate::and!(Ws<i64>, Span<Ws<Null>>);
         let strs = ["1 null", "42 null", "123 null"];
 
         std::thread::scope(|s| {
