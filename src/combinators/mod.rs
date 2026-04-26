@@ -20,7 +20,9 @@ pub mod prelude {
     pub use super::cut::{Commit, Cut};
     pub use super::delim_nested::{Braced, Bracketed, DelimNested, Parenthesized};
     pub use super::delimited::{Delimited, DelimitedExact, Padded, PaddedExact};
-    pub use super::ignore::{Between, Forget, Ignore, Preceded, Terminated};
+    pub use super::ignore::{
+        Between, Forget, Ignore, IgnoreMany, IgnoreMany1, Preceded, Terminated, Trim,
+    };
     pub use super::keyword::{IdentBoundary, Keyword, KeywordBoundary, Kw};
     pub use super::left_assoc::LeftAssoc;
     pub use super::not::Not;
