@@ -135,8 +135,7 @@ where
         match F::try_map(value) {
             Ok(mapped) => Ok((Self::new(mapped), rest)),
             Err(e) => Err(crate::error::ParseError::custom(format!(
-                "TryMap failed: {:?}",
-                e
+                "TryMap failed: {e:?}"
             ))),
         }
     }
@@ -181,7 +180,7 @@ mod tests {
     #[test]
     fn test_try_map_fail() {
         let input = "70000"; // u16::MAX is 65535
-        let result = TryMap::<u16, u32>::parse(input);
+        let result = TryMap::<u32, u16>::parse(input);
         assert!(result.is_err());
     }
 }

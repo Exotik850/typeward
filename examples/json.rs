@@ -83,10 +83,7 @@ mod tests {
 
     #[test]
     fn parse_scalar_values() {
-        assert_eq!(
-            parse_json("null").unwrap(),
-            JsonValue::Null(Ws::new(Null))
-        );
+        assert_eq!(parse_json("null").unwrap(), JsonValue::Null(Ws::new(Null)));
         assert_eq!(parse_json("true").unwrap(), JsonValue::Bool(Ws::new(true)));
         assert_eq!(
             parse_json("-12.5e2").unwrap(),
