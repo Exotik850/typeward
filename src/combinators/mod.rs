@@ -25,6 +25,7 @@ pub mod prelude {
     };
     pub use super::keyword::{IdentBoundary, Keyword, KeywordBoundary, Kw};
     pub use super::left_assoc::LeftAssoc;
+    pub use super::map::{IntoMap, Map, MapFunction, TryIntoMap, TryMap, TryMapFunction};
     pub use super::not::Not;
     pub use super::or::{Either, Or};
     pub use super::peek::Peek;

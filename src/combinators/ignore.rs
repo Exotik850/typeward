@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use crate::{
     error::ParseResult,
     parse::Parse,
-    prelude::{And, Space},
+    prelude::{And, WhitespaceStr},
 };
 
 /// A wrapper parser that ignores the output of `T`.
@@ -21,7 +21,14 @@ pub type Terminated<T, S> = And<T, Ignore<S>>;
 /// A parser that matches `A` followed by `B` followed by `C`, but only retains the output of `B`.
 pub type Between<S, T, E> = And<Ignore<S>, And<T, Ignore<E>>>;
 /// A parser that matches `T` surrounded by optional whitespace, retaining only the output of `T`.
-pub type Trim<T> = Between<IgnoreMany<Space>, T, IgnoreMany<Space>>;
+pub type Trim<T> =
+    Between<IgnoreMany<WhitespaceStr<'static>>, T, IgnoreMany<WhitespaceStr<'static>>>;
+
+impl<T> Trim<T> {
+    pub fn value(&self) -> &T {
+        self.right.left()
+    }
+}
 
 impl<T> Ignore<T> {
     #[must_use]
@@ -102,5 +109,46 @@ where
             input = next_input;
         }
         Ok((Self::new(), input))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::prelude::*;
+
+    #[test]
+    fn test_ignore() {
+        let input = "abc";
+        let result = Ignore::<Alpha>::parse(input).unwrap();
+        assert_eq!(result.0, Ignore::new());
+        assert_eq!(result.1, "");
+    }
+
+    #[test]
+    fn test_ignore_many() {
+        let input = "aaab";
+        let result = IgnoreMany::<aChar>::parse(input).unwrap();
+        assert_eq!(result.0, IgnoreMany::new());
+        assert_eq!(result.1, "b");
+    }
+
+    #[test]
+    fn test_ignore_many1() {
+        let input = "aaab";
+        let result = IgnoreMany1::<aChar>::parse(input).unwrap();
+        assert_eq!(result.0, IgnoreMany1::new());
+        assert_eq!(result.1, "b");
+
+        let input = "b";
+        let result = IgnoreMany1::<aChar>::parse(input);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_trim() {
+        let input = "  abc  ";
+        let result = Trim::<Alpha>::parse(input).unwrap();
+        assert_eq!(result.0.value(), &"abc");
+        assert_eq!(result.1, "");
     }
 }
