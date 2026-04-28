@@ -40,7 +40,6 @@ fn expand_parse_impl(input: &DeriveInput) -> syn::Result<TokenStream> {
 
     let all_parser_field_types =
         fields::collect_all_parser_field_types(&input.data, &attrs.crate_path)?;
-    ensure_recursive_parse_is_opted_in(&input.ident, &all_parser_field_types, attrs.recursive)?;
 
     let impl_header = build_impl_header(
         input,
@@ -72,31 +71,30 @@ fn expand_parse_impl(input: &DeriveInput) -> syn::Result<TokenStream> {
     let input_ident = &parse_generics.input_ident;
     let crate_path = &attrs.crate_path;
 
+    let inner = if !attrs.recursive {
+        check_recursive(&input.ident, &all_parser_field_types)?;
+        body
+    } else {
+        quote! {
+           #crate_path::parse::with_parse_recursion_guard(context, input, stringify!(#name), |context| {
+                #body
+           })
+        }
+    };
+
     Ok(quote! {
         impl #impl_generics #crate_path::parse::Parse<#lifetime, #input_ident> for #name #ty_generics #where_clause {
             fn parse_with_context(
                 input: #input_ident,
                 context: &mut #crate_path::parse::ParseOffsetContext,
             ) -> #crate_path::error::ParseResult<(Self, #input_ident)> {
-                // TODO: Make the recursion gaurd only wrap when opted in
-                // Or make a better solution for detecting and preventing infinite recursion that doesn't require opt-in
-                #crate_path::parse::with_parse_recursion_guard(context, input, stringify!(#name), |context| {
-                    #body
-                })
+                #inner
             }
         }
     })
 }
 
-fn ensure_recursive_parse_is_opted_in(
-    type_name: &Ident,
-    field_types: &[syn::Type],
-    recursive_opt_in: bool,
-) -> syn::Result<()> {
-    if recursive_opt_in {
-        return Ok(());
-    }
-
+fn check_recursive(type_name: &Ident, field_types: &[syn::Type]) -> syn::Result<()> {
     let recursive_field_types: Vec<_> = field_types
         .iter()
         .filter(|ty| type_mentions_name_or_self(ty, type_name))
