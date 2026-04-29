@@ -1,5 +1,6 @@
 use crate::parse::Parse;
 
+/// A Parser that matches `T` between `MIN` and `MAX` times, inclusive. `MIN` must be less than or equal to `MAX`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Repeat<T, const MIN: usize, const MAX: usize> {
     items: Vec<T>,
@@ -45,16 +46,14 @@ where
         let mut items = Vec::new();
         let mut rest = input;
 
-        while items.len() < MAX {
-            match T::parse_with_context(rest, context) {
-                Ok((item, new_rest)) => {
-                    crate::collections::ensure_progress(rest, new_rest, "Repeat")?;
-                    items.push(item);
-                    rest = new_rest;
-                }
+        for res in crate::combinators::iter::iter::<I, T>(rest, context, "Repeat").take(MAX) {
+            let (item, new_rest) = match res {
+                Ok((item, new_rest)) => (item, new_rest),
                 Err(err) if err.is_fatal() => return Err(err),
                 Err(_) => break,
-            }
+            };
+            items.push(item);
+            rest = new_rest;
         }
 
         if items.len() < MIN {

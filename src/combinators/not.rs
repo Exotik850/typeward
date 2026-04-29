@@ -1,10 +1,10 @@
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Not<S, P> {
+pub struct Not<P, S = &'static str> {
     value: S,
     _marker: std::marker::PhantomData<P>,
 }
 
-impl<'a, I, S, P> crate::parse::Parse<'a, I> for Not<S, P>
+impl<'a, I, S, P> crate::parse::Parse<'a, I> for Not<P, S>
 where
     I: crate::input::Input<'a>,
     S: crate::parse::Parse<'a, I>,
@@ -51,21 +51,21 @@ mod tests {
     #[test]
     fn test_not() {
         let input = "42";
-        let (result, rest) = Not::<i64, AlphaString>::parse(input).unwrap();
-        assert_eq!(result.value, 42);
+        let (result, rest) = Not::<Alpha>::parse(input).unwrap();
+        assert_eq!(result.value, "42");
         assert_eq!(rest, "");
     }
 
     #[test]
     fn test_not_fail() {
         let input = "123";
-        let err = Not::<AlphaNumString, i64>::parse(input);
+        let err = Not::<i64, AlphaNum>::parse(input);
         assert!(err.is_err());
     }
 
     #[test]
     fn test_not_propagates_fatal_lookahead_errors() {
-        type Parser<'a> = Not<crate::primitives::basic::Rest<&'a [u8]>, i64>;
+        type Parser<'a> = Not<i64, crate::primitives::basic::Rest<&'a [u8]>>;
 
         let bytes: &[u8] = &[0xFF, b'a'];
         let err = Parser::parse(bytes).unwrap_err();

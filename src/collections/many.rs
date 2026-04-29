@@ -64,20 +64,16 @@ where
     ) -> crate::error::ParseResult<(Self, I)> {
         let (first, mut rest) = T::parse_with_context(input, context)?;
         crate::collections::ensure_progress(input, rest, "Many1")?;
-
         let mut items = Vec::new();
         items.push(first);
-
-        loop {
-            match T::parse_with_context(rest, context) {
-                Ok((item, new_rest)) => {
-                    crate::collections::ensure_progress(rest, new_rest, "Many1")?;
-                    items.push(item);
-                    rest = new_rest;
-                }
+        for res in crate::combinators::iter::iter::<I, T>(rest, context, "Many1") {
+            let (item, new_rest) = match res {
+                Ok((item, new_rest)) => (item, new_rest),
                 Err(err) if err.is_fatal() => return Err(err),
                 Err(_) => break,
-            }
+            };
+            items.push(item);
+            rest = new_rest;
         }
 
         Ok((Many1 { items }, rest))

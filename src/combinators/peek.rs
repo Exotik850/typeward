@@ -1,5 +1,8 @@
 use crate::{error::ParseResult, parse::Parse};
 
+/// A parser that matches `P` without consuming any input.
+/// 
+/// Useful for lookahead or peeking at upcoming input without advancing the parser state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Peek<P> {
     value: P,

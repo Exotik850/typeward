@@ -706,9 +706,10 @@ mod tests {
     fn stream_take_till_owned_value_larger_than_buffer() {
         let payload = "segmentbeforepipe";
         let stream = ReadInputStream::<_, 4>::new(Cursor::new(payload.as_bytes()));
-        let parsed = parse_complete_input::<_, crate::primitives::str::TakeTillToken<NullChar>>(
-            stream.as_input(),
-        )
+        let parsed = parse_complete_input::<
+            _,
+            crate::primitives::str::TakeTillToken<NullChar, String>,
+        >(stream.as_input())
         .unwrap();
 
         assert_eq!(parsed.into_inner(), payload);

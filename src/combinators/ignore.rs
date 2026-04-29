@@ -22,7 +22,7 @@ pub type Terminated<T, S> = And<T, Ignore<S>>;
 pub type Between<S, T, E> = And<Ignore<S>, And<T, Ignore<E>>>;
 /// A parser that matches `T` surrounded by optional whitespace, retaining only the output of `T`.
 pub type Trim<T> =
-    Between<IgnoreMany<WhitespaceStr<'static>>, T, IgnoreMany<WhitespaceStr<'static>>>;
+    Between<Ignore<Option<WhitespaceStr<'static>>>, T, Ignore<Option<WhitespaceStr<'static>>>>;
 
 impl<T> Trim<T> {
     pub fn value(&self) -> &T {
@@ -75,7 +75,12 @@ where
         mut input: I,
         context: &mut crate::parse::ParseOffsetContext,
     ) -> ParseResult<(Self, I)> {
-        while let Ok((_, next_input)) = T::parse_with_context(input, context) {
+        for res in super::iter::iter::<I, T>(input, context, "IgnoreMany") {
+            let (_, next_input) = match res {
+                Ok((item, next_input)) => (item, next_input),
+                Err(err) if err.is_fatal() => return Err(err),
+                Err(_) => break,
+            };
             input = next_input;
         }
         Ok((Self::new(), input))
@@ -109,6 +114,41 @@ where
             input = next_input;
         }
         Ok((Self::new(), input))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Default, Copy)]
+pub struct Count<T> {
+    pub count: usize,
+    _marker: PhantomData<T>,
+}
+
+impl<T> Count<T> {
+    #[must_use]
+    pub fn new(count: usize) -> Self {
+        Self {
+            count,
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl<'a, I, T> Parse<'a, I> for Count<T>
+where
+    I: crate::input::Input<'a>,
+    T: Parse<'a, I>,
+{
+    #[inline]
+    fn parse_with_context(
+        mut input: I,
+        context: &mut crate::parse::ParseOffsetContext,
+    ) -> ParseResult<(Self, I)> {
+        let mut count = 0;
+        while let Ok((_, next_input)) = T::parse_with_context(input, context) {
+            input = next_input;
+            count += 1;
+        }
+        Ok((Self::new(count), input))
     }
 }
 

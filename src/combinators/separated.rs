@@ -1,4 +1,10 @@
-use crate::{error::ParseResult, literals::Comma, parse::Parse, prelude::Or};
+use crate::{
+    combinators::ignore::Trim,
+    error::ParseResult,
+    literals::Comma,
+    parse::Parse,
+    prelude::Or,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum SeparatedIterState {
@@ -141,7 +147,7 @@ where
     }
 }
 
-pub type CommaSeparated<T> = Separated<T, Comma>;
+pub type CommaSeparated<T> = Separated<T, Trim<Comma>>;
 
 separated_type!(
     /// Allows trailing separators, and can match an empty sequence.
@@ -175,7 +181,7 @@ where
     }
 }
 
-pub type CommaSeparated0<T> = Separated0<T, Comma>;
+pub type CommaSeparated0<T> = Separated0<T, Trim<Comma>>;
 
 separated_type!(
     /// does not allow trailing separators.
@@ -244,7 +250,7 @@ mod tests {
 
     #[test]
     fn separated_parses_items_and_separators() {
-        let (result, rest) = CommaSeparated::<AlphaString>::parse("a,b,c;").unwrap();
+        let (result, rest) = CommaSeparated::<AlphaString>::parse("a, b, c;").unwrap();
         assert_eq!(result.items().len(), 3);
         assert_eq!(result.separators().len(), 2);
         assert_eq!(rest, ";");

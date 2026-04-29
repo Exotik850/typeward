@@ -9,6 +9,7 @@ pub mod left_assoc;
 pub mod map;
 pub mod not;
 pub mod or;
+pub mod iter;
 pub mod peek;
 pub mod separated;
 pub mod span;
@@ -22,6 +23,7 @@ pub mod prelude {
     pub use super::delimited::{Delimited, DelimitedExact, Padded, PaddedExact};
     pub use super::ignore::{
         Between, Forget, Ignore, IgnoreMany, IgnoreMany1, Preceded, Terminated, Trim,
+        Count,
     };
     pub use super::keyword::{IdentBoundary, Keyword, KeywordBoundary, Kw};
     pub use super::left_assoc::LeftAssoc;
