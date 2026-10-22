@@ -301,7 +301,7 @@ impl ParseError {
         }
     }
 
-    /// Alias for [`with_span`], useful for fluent call chains.
+    /// Alias for [`Self::with_span`], useful for fluent call chains.
     #[must_use]
     pub fn at(self, span: SourceSpan) -> Self {
         self.with_span(span)

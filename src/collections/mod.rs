@@ -2,6 +2,10 @@ pub mod collect;
 pub mod many;
 pub mod repeat;
 
+pub use collect::Collect;
+pub use many::{Many0, Many1};
+pub use repeat::{Repeat, RepeatUntil};
+
 use crate::input::Input;
 
 pub(crate) fn ensure_progress<'a, I>(
@@ -21,8 +25,3 @@ where
     Ok(())
 }
 
-pub mod prelude {
-    pub use super::collect::Collect;
-    pub use super::many::{Many0, Many1};
-    pub use super::repeat::{Repeat, RepeatUntil};
-}

@@ -3,17 +3,16 @@
 //!
 //! This crate is an alternative to `nom` for creating structs that can be parsed
 //! by composing type-level parsers. Define tokens as types, implement `Parse` for
-//! your structs, and combine them using generic combinators like [`Delimited`].
+//! your structs, and combine them using generic combinators like [`combinators::Delimited`].
 //!
 //! # Module Overview
 //!
-//! - [`error`] — Parse error types and [`ParseResult`]
-//! - [`token`] — Token trait ([`Token`])
-//! - [`input`] — Input abstraction trait ([`Input`])
-//! - [`parse`] — The core [`Parse`] trait and parse helpers
-//! - [`primitives`] — `Parse` implementations for built-in types
-//! - [`combinators`] — Parser combinators like [`Delimited`]
-//! - [`collections`] — Repetition/collection combinators like [`Many0`] and [`Repeat`]
+//! - [`error`] — Parse error types and [`error::ParseResult`]
+//! - [`token`] — Token trait ([`token::Token`])
+//! - [`input`] — Input abstraction trait ([`input::Input`])
+//! - [`primitives`] — [`parse::Parse`] implementations for built-in types
+//! - [`combinators`] — Parser combinators like [`combinators::Delimited`]
+//! - [`collections`] — Repetition/collection combinators like [`collections::Many0`] and [`collections::Repeat`]
 
 extern crate self as typeward;
 
@@ -38,8 +37,8 @@ pub mod token;
 /// Import this module with `use typeward::prelude::*;` to get access
 /// to the core traits, types, and functions.
 pub mod prelude {
-    pub use crate::collections::prelude::*;
-    pub use crate::combinators::prelude::*;
+    pub use crate::collections::*;
+    pub use crate::combinators::*;
     pub use crate::error::{ParseError, ParseResult, SourceSpan};
     pub use crate::input::{
         BorrowInput, FromInputStr, Input, ReadInput, ReadInputBuf, ReadInputStream,
