@@ -2,6 +2,7 @@ use std::marker::PhantomData;
 
 use crate::{error::ParseResult, parse::Parse};
 
+/// Iterator over repeated parser matches.
 #[derive(Debug)]
 pub struct PIter<'a, I, T> {
     input: I,
@@ -10,6 +11,7 @@ pub struct PIter<'a, I, T> {
     _marker: PhantomData<T>,
 }
 
+/// Creates an iterator that repeatedly parses `T`.
 pub fn iter<'a, I, T>(
     input: I,
     context: &'a mut crate::parse::ParseOffsetContext,

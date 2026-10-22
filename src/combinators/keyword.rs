@@ -11,6 +11,7 @@ use crate::{
 /// The parser succeeds only when the next character after a matched token
 /// satisfies `is_boundary`.
 pub trait KeywordBoundary {
+    /// Returns whether `ch` may follow a keyword.
     fn is_boundary(ch: char) -> bool;
 }
 
@@ -37,11 +38,13 @@ pub struct Keyword<T, B = IdentBoundary> {
 }
 
 impl<T, B> Keyword<T, B> {
+    /// Returns the token and consumes the keyword wrapper.
     #[must_use]
     pub fn into_inner(self) -> T {
         self.token
     }
 
+    /// Returns the parsed token.
     #[must_use]
     pub fn inner(&self) -> &T {
         &self.token

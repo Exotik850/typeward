@@ -1,3 +1,4 @@
+/// Succeeds only when `P` fails, then parses and returns `S`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Not<P, S = &'static str> {
     value: S,

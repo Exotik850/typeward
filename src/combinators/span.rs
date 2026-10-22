@@ -9,31 +9,38 @@ use crate::{
 /// Wraps a parser output with the input span it consumed.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Copy, Default)]
 pub struct Span<P> {
+    /// The parsed value.
     pub inner: P,
+    /// The half-open source span consumed by the parser.
     pub span: SourceSpan,
 }
 
 impl<P> Span<P> {
+    /// Creates a value with its source span.
     #[must_use]
     pub fn new(inner: P, span: SourceSpan) -> Self {
         Self { inner, span }
     }
 
+    /// Returns the wrapped value and consumes the span.
     #[must_use]
     pub fn into_inner(self) -> P {
         self.inner
     }
 
+    /// Returns the wrapped value.
     #[must_use]
     pub fn inner(&self) -> &P {
         &self.inner
     }
 
+    /// Splits the value and its span.
     #[must_use]
     pub fn into_parts(self) -> (P, SourceSpan) {
         (self.inner, self.span)
     }
 
+    /// Maps the wrapped value while retaining its span.
     #[must_use]
     pub fn map<T, F>(self, map: F) -> Span<T>
     where

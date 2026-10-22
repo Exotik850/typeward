@@ -25,12 +25,14 @@ pub type Trim<T> =
     Between<Ignore<Option<WhitespaceStr<'static>>>, T, Ignore<Option<WhitespaceStr<'static>>>>;
 
 impl<T> Trim<T> {
+    /// Returns the retained inner value.
     pub fn value(&self) -> &T {
         self.right.left()
     }
 }
 
 impl<T> Ignore<T> {
+    /// Creates an ignore wrapper without parsing.
     #[must_use]
     pub fn new() -> Self {
         Self(PhantomData)
@@ -59,6 +61,7 @@ where
 pub struct IgnoreMany<T>(PhantomData<T>);
 
 impl<T> IgnoreMany<T> {
+    /// Creates an empty repeated-ignore wrapper.
     #[must_use]
     pub fn new() -> Self {
         Self(PhantomData)
@@ -92,6 +95,7 @@ where
 pub struct IgnoreMany1<T>(PhantomData<T>);
 
 impl<T> IgnoreMany1<T> {
+    /// Creates a repeated-ignore wrapper that requires one match.
     #[must_use]
     pub fn new() -> Self {
         Self(PhantomData)
@@ -117,13 +121,16 @@ where
     }
 }
 
+/// Counts successful matches of `T` without retaining their values.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Default, Copy)]
 pub struct Count<T> {
+    /// Number of successful matches.
     pub count: usize,
     _marker: PhantomData<T>,
 }
 
 impl<T> Count<T> {
+    /// Creates a count value.
     #[must_use]
     pub fn new(count: usize) -> Self {
         Self {

@@ -8,16 +8,19 @@ use crate::{
 pub struct Ws<T>(pub T);
 
 impl<T> Ws<T> {
+    /// Returns the wrapped value and consumes the whitespace wrapper.
     #[must_use]
     pub fn into_inner(self) -> T {
         self.0
     }
 
+    /// Returns the wrapped value.
     #[must_use]
     pub fn inner(&self) -> &T {
         &self.0
     }
 
+    /// Creates a whitespace wrapper.
     pub fn new(value: T) -> Self {
         Self(value)
     }
@@ -53,8 +56,10 @@ where
 }
 
 pub trait WsExt: Sized {
+    /// Parser output wrapped with leading-whitespace handling.
     type Whitespaced;
 
+    /// Parses `Self` after trimming leading whitespace.
     fn parse_ws<'a, I>(input: I) -> ParseResult<(Self::Whitespaced, I)>
     where
         I: ParseOffsetInput<'a>,
