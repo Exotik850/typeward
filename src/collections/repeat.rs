@@ -1,12 +1,18 @@
 use crate::parse::Parse;
 
-/// A Parser that matches `T` between `MIN` and `MAX` times, inclusive. `MIN` must be less than or equal to `MAX`.
+/// Parses `T` between `MIN` and `MAX` times, inclusive.
+///
+/// `MIN` must be less than or equal to `MAX`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Repeat<T, const MIN: usize, const MAX: usize> {
     items: Vec<T>,
 }
 
 impl<T, const MIN: usize, const MAX: usize> Repeat<T, MIN, MAX> {
+    /// Returns the parsed items.
+        /// Returns the parsed items and consumes the wrapper.
+        /// Returns the number of parsed items.
+        /// Returns whether no items were parsed.
     #[must_use]
     pub fn items(&self) -> &[T] {
         &self.items
@@ -68,9 +74,12 @@ where
     }
 }
 
+/// Parses `T` at least `N` times and at most `N` times.
 pub type MaxN<T, const N: usize> = Repeat<T, 0, N>;
+/// Parses `T` at least `N` times, without an upper bound.
 pub type MinN<T, const N: usize> = Repeat<T, N, { usize::MAX }>;
 
+/// Parses `T` repeatedly until `U` succeeds without consuming input.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct RepeatUntil<T, U> {
     items: Vec<T>,
@@ -78,6 +87,10 @@ pub struct RepeatUntil<T, U> {
 }
 
 impl<T, U> RepeatUntil<T, U> {
+    /// Returns the parsed items.
+        /// Returns the parsed items and consumes the wrapper.
+        /// Returns the number of parsed items.
+        /// Returns whether no items were parsed.
     #[must_use]
     pub fn items(&self) -> &[T] {
         &self.items

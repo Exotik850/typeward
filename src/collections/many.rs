@@ -1,32 +1,39 @@
+/// Parses zero or more occurrences of `T` and returns them as a `Vec<T>`.
 pub type Many0<T> = Vec<T>;
 
+/// Parses one or more occurrences of `T`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Many1<T> {
     items: Vec<T>,
 }
 
 impl<T> Many1<T> {
+    /// Returns the parsed items.
     #[must_use]
     pub fn items(&self) -> &[T] {
         &self.items
     }
 
+    /// Returns the parsed items and consumes the wrapper.
     #[must_use]
     pub fn into_items(self) -> Vec<T> {
         self.items
     }
 
     #[must_use]
+    /// Returns the number of parsed items.
     pub fn len(&self) -> usize {
         self.items.len()
     }
 
     #[must_use]
+    /// Returns whether the collection is empty.
     pub fn is_empty(&self) -> bool {
         self.items.is_empty()
     }
 
     #[must_use]
+    /// Returns the first parsed item.
     pub fn first(&self) -> &T {
         // Invariant: `Many1::parse_with_context` only constructs the value
         // after pushing the first successful item, so `items` is never empty.
@@ -36,6 +43,7 @@ impl<T> Many1<T> {
     }
 
     #[must_use]
+    /// Returns the last parsed item.
     pub fn last(&self) -> &T {
         self.items
             .last()

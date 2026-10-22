@@ -1,5 +1,6 @@
 use crate::{error::ParseResult, parse::Parse};
 
+/// Collects zero or more successful matches of `T` into `C`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Collect<T, C> {
     items: C,
@@ -7,10 +8,12 @@ pub struct Collect<T, C> {
 }
 
 impl<T, C> Collect<T, C> {
+    /// Returns the collected items.
     pub fn items(&self) -> &C {
         &self.items
     }
 
+    /// Returns the collected items and consumes the wrapper.
     pub fn into_items(self) -> C {
         self.items
     }
