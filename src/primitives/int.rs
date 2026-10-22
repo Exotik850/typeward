@@ -1,3 +1,8 @@
+//! Parsers for signed, unsigned, and non-zero integer types.
+//!
+//! Integers consume an optional sign for signed types followed by ASCII digits
+//! and report overflow as a parse error.
+
 use crate::{
     error::{ParseError, ParseResult, SourceSpan},
     parse::{Parse, ParseOffsetContext, ParseOffsetInput, current_parse_offset},

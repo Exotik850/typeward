@@ -14,6 +14,7 @@ enum SeparatedIterState {
     Done,
 }
 
+/// Iterator over alternating item and separator matches.
 #[derive(Debug)]
 pub struct SeparatedIter<'a, I, T, S> {
     input: I,
@@ -23,6 +24,7 @@ pub struct SeparatedIter<'a, I, T, S> {
 }
 
 impl<'a, I, T, S> SeparatedIter<'a, I, T, S> {
+    /// Creates a separated parser iterator.
     pub fn new(input: I, context: &'a mut crate::parse::ParseOffsetContext) -> Self {
         Self {
             input,
@@ -90,31 +92,39 @@ macro_rules! separated_type {
         ///
         $(#[$attr])*
         pub struct $name<T, S> {
+            /// Parsed items.
             pub items: Vec<T>,
+            /// Parsed separators between items.
             pub separators: Vec<S>,
         }
 
         impl<T, S> $name<T, S> {
+            /// Creates a separated result from items and separators.
             #[must_use]
             pub fn new(items: Vec<T>, separators: Vec<S>) -> Self {
                 Self { items, separators }
             }
+            /// Returns the parsed items.
             #[must_use]
             pub fn items(&self) -> &[T] {
                 &self.items
             }
+            /// Returns the parsed separators.
             #[must_use]
             pub fn separators(&self) -> &[S] {
                 &self.separators
             }
+            /// Returns the parsed items and consumes the wrapper.
             #[must_use]
             pub fn into_items(self) -> Vec<T> {
                 self.items
             }
+            /// Returns the parsed separators and consumes the wrapper.
             #[must_use]
             pub fn into_separators(self) -> Vec<S> {
                 self.separators
             }
+            /// Splits the result into items and separators.
             #[must_use]
             pub fn into_parts(self) -> (Vec<T>, Vec<S>) {
                 (self.items, self.separators)
@@ -147,6 +157,7 @@ where
     }
 }
 
+/// Parses one or more items separated by commas with optional surrounding whitespace.
 pub type CommaSeparated<T> = Separated<T, Trim<Comma>>;
 
 separated_type!(

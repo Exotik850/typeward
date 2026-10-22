@@ -5,11 +5,13 @@ use crate::{combinators::separated::SeparatedExact, error::ParseResult, parse::P
 /// Inspired by [parsel's `LeftAssoc`](https://docs.rs/parsel/latest/parsel/ast/enum.LeftAssoc.html)
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum LeftAssoc<O, R> {
+    /// A binary operation with a left-hand side, an operator, and a right-hand side.
     Binary {
         left: Box<LeftAssoc<O, R>>,
         operator: O,
         right: R,
     },
+    /// A right-hand side value with no left-hand side or operator.
     Rhs(R),
 }
 

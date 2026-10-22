@@ -28,6 +28,7 @@ impl<R, const N: usize> ReadInputStream<R, N>
 where
     R: Read,
 {
+    /// Creates a streaming input with an `N`-byte replay window.
     #[must_use]
     pub fn new(reader: R) -> Self {
         const {
@@ -42,6 +43,7 @@ where
         }
     }
 
+    /// Returns a copyable parser cursor over this stream.
     #[must_use]
     pub fn as_input(&self) -> ReadInputStreamInput<'_, R, N> {
         ReadInputStreamInput {

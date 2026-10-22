@@ -98,6 +98,7 @@ pub trait FromInputStr<'a, I>: AsRef<str> + Sized
 where
     I: Input<'a>,
 {
+    /// Converts a textual fragment into the output type.
     fn from_input_str(value: Cow<'a, str>) -> ParseResult<Self>;
 }
 

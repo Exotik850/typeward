@@ -4,6 +4,7 @@ use std::borrow::Cow;
 macro_rules! filter_str {
     ($name:ident, $filter:expr) => {
         #[derive(Debug, Eq, Clone, Hash, Default, PartialOrd, Ord)]
+        #[doc = concat!("Parses a maximal prefix accepted by `", stringify!($name), "`.")]
         pub struct $name<S = String>
         where
             S: AsRef<str>,
@@ -66,8 +67,11 @@ macro_rules! filter_str {
         }
 
         pastey::paste! {
+            #[doc = "Borrowed string output for this filtered parser."]
             pub type [<$name Str>]<'a> = $name<&'a str>;
+            #[doc = "Owned string output for this filtered parser."]
             pub type [<$name String>] = $name<String>;
+            #[doc = "Copy-on-write string output for this filtered parser."]
             pub type [<$name Cow>]<'a> = $name<Cow<'a, str>>;
         }
     };
@@ -102,6 +106,7 @@ macro_rules! parse_filtered {
     ($name:ident, $filter:expr, $($ty:ty),+) => {
 
         #[derive(Debug, PartialEq, Eq, Clone, Hash, Default, PartialOrd, Ord)]
+        #[doc = concat!("Parses `T` and succeeds only when the value satisfies the `", stringify!($name), "` predicate.")]
         pub struct $name<T>(pub T);
         $(
             impl<'a, I> $crate::parse::Parse<'a, I> for $name<$ty>

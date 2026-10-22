@@ -1,3 +1,8 @@
+//! Parsers for `f32` and `f64` decimal floating-point values.
+//!
+//! Floating-point parsers consume the valid numeric prefix and leave any
+//! following delimiter or invalid suffix in the remaining input.
+
 use crate::{
     error::ParseResult,
     input::Input,

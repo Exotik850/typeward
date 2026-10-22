@@ -3,7 +3,9 @@ use std::borrow::Cow;
 use crate::parse::{ParseOffsetInput, current_parse_offset};
 use crate::{input::Input, parse::Parse};
 
+/// A parser output representing a successful empty result.
 pub type Empty = ();
+/// Alias for [`Empty`].
 pub type Success = ();
 
 /// A parser that always succeeds and consumes the rest of the input.
@@ -38,8 +40,11 @@ impl<I: PartialEq<I>> PartialEq<I> for Rest<I> {
     }
 }
 
+/// Parses and returns the remaining borrowed string input.
 pub type RestStr<'a> = Rest<&'a str>;
+/// Parses and returns the remaining owned string input.
 pub type RestString = Rest<String>;
+/// Parses and returns the remaining copy-on-write string input.
 pub type RestCowStr<'a> = Rest<Cow<'a, str>>;
 
 /// A parser that checks that the input is empty, and fails if it is not.

@@ -7,10 +7,12 @@ pub struct Map<T, U, F = IntoMap> {
 
 /// A trait for mapping a value of type `T` to a value of type `U`.
 pub trait MapFunction<T, U> {
+    /// Maps a parsed `T` into `U`.
     fn map(value: T) -> U;
 }
 
 /// A default mapping function that uses `From` to convert `T` into `U`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct IntoMap;
 impl<T, U> MapFunction<T, U> for IntoMap
 where
@@ -22,6 +24,7 @@ where
 }
 
 impl<T, U, F> Map<T, U, F> {
+    /// Creates a mapped value.
     pub fn new(value: U) -> Self {
         Self {
             value,
@@ -29,6 +32,7 @@ impl<T, U, F> Map<T, U, F> {
         }
     }
 
+    /// Converts the mapped value into `T`.
     pub fn into_inner(self) -> T
     where
         U: Into<T>,
@@ -76,9 +80,11 @@ pub struct TryMap<T, U, F = TryIntoMap> {
 /// A trait for mapping a value of type `T` to a value of type `U`, where the mapping can fail.
 pub trait TryMapFunction<T, U> {
     type Error;
+    /// Tries to map a parsed `T` into `U`.
     fn try_map(value: T) -> Result<U, Self::Error>;
 }
 /// A default try-mapping function that uses `TryFrom` to convert `T` into `U`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct TryIntoMap;
 impl<T, U> TryMapFunction<T, U> for TryIntoMap
 where
@@ -91,6 +97,7 @@ where
 }
 
 impl<T, U, F> TryMap<T, U, F> {
+    /// Creates a try-mapped value.
     pub fn new(value: U) -> Self {
         Self {
             value,
@@ -98,6 +105,7 @@ impl<T, U, F> TryMap<T, U, F> {
         }
     }
 
+    /// Converts the mapped value into `T`.
     pub fn into_inner(self) -> T
     where
         U: Into<T>,

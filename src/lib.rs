@@ -7,12 +7,14 @@
 //!
 //! # Module Overview
 //!
-//! - [`error`] — Parse error types and [`error::ParseResult`]
-//! - [`token`] — Token trait ([`token::Token`])
-//! - [`input`] — Input abstraction trait ([`input::Input`])
-//! - [`primitives`] — [`parse::Parse`] implementations for built-in types
-//! - [`combinators`] — Parser combinators like [`combinators::Delimited`]
 //! - [`collections`] — Repetition/collection combinators like [`collections::Many0`] and [`collections::Repeat`]
+//! - [`combinators`] — Parser combinators like [`combinators::Delimited`]
+//! - [`error`] — Parse error types and [`error::ParseResult`]
+//! - [`input`] — Input abstraction trait ([`input::Input`])
+//! - [`literals`] — Parsers for literal tokens like [`literals::AChar`]
+//! - [`parse`] — The [`parse::Parse`] trait and related types
+//! - [`primitives`] — [`parse::Parse`] implementations for built-in types and commonly used types
+//! - [`token`] — Token trait ([`token::Token`])
 
 extern crate self as typeward;
 

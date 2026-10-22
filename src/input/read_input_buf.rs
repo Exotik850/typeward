@@ -57,21 +57,25 @@ impl ReadInputBuf {
     }
 
     #[must_use]
+    /// Returns the buffered bytes.
     pub fn as_bytes(&self) -> &[u8] {
         &self.bytes
     }
 
     #[must_use]
+    /// Returns the buffered bytes and consumes the buffer.
     pub fn into_bytes(self) -> Vec<u8> {
         self.bytes
     }
 
     #[must_use]
+    /// Returns the number of buffered bytes.
     pub fn len(&self) -> usize {
         self.bytes.len()
     }
 
     #[must_use]
+    /// Returns whether the buffer contains no bytes.
     pub fn is_empty(&self) -> bool {
         self.bytes.is_empty()
     }
@@ -96,11 +100,13 @@ pub struct ReadInput<'a> {
 }
 
 impl<'a> ReadInput<'a> {
+    /// Creates a parse input over borrowed bytes.
     #[must_use]
     pub const fn new(bytes: &'a [u8]) -> Self {
         Self { bytes }
     }
 
+    /// Returns the borrowed bytes.
     #[must_use]
     pub const fn as_bytes(self) -> &'a [u8] {
         self.bytes

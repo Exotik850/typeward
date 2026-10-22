@@ -75,6 +75,7 @@ where
     }
 }
 
+/// Parses input up to the next occurrence of token `T`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct TakeTillToken<T, S = String>
 where
@@ -88,11 +89,13 @@ impl<T, S> TakeTillToken<T, S>
 where
     S: AsRef<str>,
 {
+    /// Returns the parsed text and consumes the wrapper.
     #[must_use]
     pub fn into_inner(self) -> S {
         self.value
     }
 
+    /// Returns the parsed text as a string slice.
     #[must_use]
     pub fn as_str(&self) -> &str {
         self.value.as_ref()
@@ -135,8 +138,11 @@ where
     }
 }
 
+/// Borrowed string output for [`TakeTillToken`].
 pub type TakeTillTokenStr<'a, T> = TakeTillToken<T, &'a str>;
+/// Copy-on-write string output for [`TakeTillToken`].
 pub type TakeTillTokenCow<'a, T> = TakeTillToken<T, Cow<'a, str>>;
+/// Owned string output for [`TakeTillToken`].
 pub type TakeTillTokenString<T> = TakeTillToken<T, String>;
 
 #[cfg(test)]

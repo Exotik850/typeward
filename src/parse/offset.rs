@@ -10,26 +10,31 @@ pub struct ParseOffsetAnchor {
 }
 
 impl ParseOffsetAnchor {
+    /// Creates an anchor from an absolute start and byte length.
     #[must_use]
     pub const fn new(start: usize, len: usize) -> Self {
         Self { start, len }
     }
 
+    /// Returns the absolute start offset.
     #[must_use]
     pub const fn start(self) -> usize {
         self.start
     }
 
+    /// Returns the anchor length in bytes.
     #[must_use]
     pub const fn len(self) -> usize {
         self.len
     }
 
+    /// Returns whether the anchor has zero length.
     #[must_use]
     pub const fn is_empty(self) -> bool {
         self.len == 0
     }
 
+    /// Returns the exclusive end offset.
     #[must_use]
     pub const fn end(self) -> usize {
         self.start.saturating_add(self.len)
@@ -65,6 +70,7 @@ struct RecursionFrame {
 }
 
 impl ParseOffsetContext {
+    /// Creates an empty parse-offset context.
     #[must_use]
     pub fn new() -> Self {
         Self {

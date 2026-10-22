@@ -3,9 +3,10 @@ use crate::{
     parse::Parse,
 };
 
+/// A combinator that parses a value of type `A` and then validates it with a parser of type `B`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Copy, Default)]
 pub struct AndIs<A, B> {
-    pub value: A,
+    value: A,
     _marker: std::marker::PhantomData<B>,
 }
 

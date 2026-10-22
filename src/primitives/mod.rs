@@ -1,3 +1,5 @@
+//! Parsers for primitive values and filtered text.
+
 use crate::{
     error::{ParseResult, SourceSpan},
     parse::{Parse, ParseOffsetInput, current_parse_offset},
