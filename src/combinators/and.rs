@@ -1,33 +1,43 @@
 use crate::{error::ParseResult, parse::Parse};
 
+/// Parses `A` followed by `B` and retains both outputs.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Copy, Default)]
 pub struct And<A, B> {
+    /// Output parsed by `A`.
     pub left: A,
+    /// Output parsed by `B`.
     pub right: B,
 }
 
 impl<A, B> And<A, B> {
+    /// Creates a pair from two parsed values.
     pub fn new(left: A, right: B) -> Self {
         Self { left, right }
     }
+    /// Returns the first parsed value.
     pub fn left(&self) -> &A {
         &self.left
     }
+    /// Returns the second parsed value.
     pub fn right(&self) -> &B {
         &self.right
     }
+    /// Returns a mutable reference to the first parsed value.
     pub fn left_mut(&mut self) -> &mut A {
         &mut self.left
     }
+    /// Returns a mutable reference to the second parsed value.
     pub fn right_mut(&mut self) -> &mut B {
         &mut self.right
     }
+    /// Splits the pair into its two parsed values.
     pub fn into_parts(self) -> (A, B) {
         (self.left, self.right)
     }
 }
 
 impl<A, B, C> And<A, And<B, C>> {
+    /// Flattens a nested pair into a three-element tuple.
     pub fn flatten(self) -> (A, B, C) {
         (self.left, self.right.left, self.right.right)
     }
@@ -51,6 +61,7 @@ where
 }
 
 #[macro_export]
+/// Builds the nested [`And`] type for a sequence of parser types.
 macro_rules! and {
     ($a:ty, $b:ty) => {
         $crate::combinators::and::And<$a, $b>
@@ -61,6 +72,7 @@ macro_rules! and {
 }
 
 #[macro_export]
+/// Builds a nested [`And`] value from parser outputs.
 macro_rules! new_and {
     ($a:expr, $b:expr) => {
         $crate::combinators::and::And::new($a, $b)
@@ -71,6 +83,7 @@ macro_rules! new_and {
 }
 
 #[macro_export]
+/// Unpacks a nested [`And`] value into a tuple.
 macro_rules! unpack_and {
     ($val:expr, ($single:ty $(,)?)) => {
         ($val,)

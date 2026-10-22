@@ -25,20 +25,26 @@ pub struct Delimited<S, E, I> {
     pub inner: I,
 }
 
+/// Alias for delimited parser where the start and end delimiters are the same type.
 pub type Padded<E, I> = Delimited<E, E, I>;
 
 /// A parser that matches content wrapped between start and end tokens without
 /// automatic whitespace trimming.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct DelimitedExact<S, E, I> {
+    /// The parsed start delimiter.
     pub start: S,
+    /// The parsed end delimiter.
     pub end: E,
+    /// The parsed inner content.
     pub inner: I,
 }
 
+/// A whitespace-preserving alias for [`Delimited`].
 pub type PaddedExact<E, I> = DelimitedExact<E, E, I>;
 
 impl<S, E, I> DelimitedExact<S, E, I> {
+    /// Maps the inner value while retaining both delimiters.
     pub fn map_inner<J>(self, f: impl FnOnce(I) -> J) -> DelimitedExact<S, E, J> {
         DelimitedExact {
             start: self.start,
@@ -47,21 +53,24 @@ impl<S, E, I> DelimitedExact<S, E, I> {
         }
     }
 
+    /// Returns the inner value and consumes the wrapper.
     pub fn into_inner(self) -> I {
         self.inner
     }
 
+    /// Returns a reference to the inner value.
     pub fn inner(&self) -> &I {
         &self.inner
     }
 
+    /// Returns a mutable reference to the inner value.
     pub fn inner_mut(&mut self) -> &mut I {
         &mut self.inner
     }
 }
 
 impl<S, E, I> Delimited<S, E, I> {
-    /// Map the inner content of the delimited parser
+    /// Maps the inner content of the delimited parser.
     pub fn map_inner<J>(self, f: impl FnOnce(I) -> J) -> Delimited<S, E, J> {
         Delimited {
             start: self.start,
@@ -70,14 +79,17 @@ impl<S, E, I> Delimited<S, E, I> {
         }
     }
 
+    /// Returns the inner value and consumes the wrapper.
     pub fn into_inner(self) -> I {
         self.inner
     }
 
+    /// Returns a reference to the inner value.
     pub fn inner(&self) -> &I {
         &self.inner
     }
 
+    /// Returns a mutable reference to the inner value.
     pub fn inner_mut(&mut self) -> &mut I {
         &mut self.inner
     }

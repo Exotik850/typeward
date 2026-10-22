@@ -3,21 +3,27 @@ use crate::{
     parse::Parse,
 };
 
+/// Tries `A` and then `B`, retaining the output from the branch that succeeds.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Or<A, B> {
+    /// The first parser succeeded.
     Left(A),
+    /// The second parser succeeded.
     Right(B),
 }
 
 impl<A, B> Or<A, B> {
+    /// Returns whether the first branch succeeded.
     pub fn is_left(&self) -> bool {
         matches!(self, Or::Left(_))
     }
 
+    /// Returns whether the second branch succeeded.
     pub fn is_right(&self) -> bool {
         matches!(self, Or::Right(_))
     }
 
+    /// Returns the first branch value, if present.
     pub fn left(&self) -> Option<&A> {
         match self {
             Or::Left(value) => Some(value),
@@ -25,6 +31,7 @@ impl<A, B> Or<A, B> {
         }
     }
 
+    /// Returns the second branch value, if present.
     pub fn right(&self) -> Option<&B> {
         match self {
             Or::Left(_) => None,
@@ -32,6 +39,7 @@ impl<A, B> Or<A, B> {
         }
     }
 
+    /// Returns a mutable reference to the first branch value, if present.
     pub fn left_mut(&mut self) -> Option<&mut A> {
         match self {
             Or::Left(value) => Some(value),
@@ -39,6 +47,7 @@ impl<A, B> Or<A, B> {
         }
     }
 
+    /// Returns a mutable reference to the second branch value, if present.
     pub fn right_mut(&mut self) -> Option<&mut B> {
         match self {
             Or::Left(_) => None,
@@ -46,6 +55,7 @@ impl<A, B> Or<A, B> {
         }
     }
 
+    /// Extracts the first branch value, if present.
     pub fn into_left(self) -> Option<A> {
         match self {
             Or::Left(value) => Some(value),
@@ -53,6 +63,7 @@ impl<A, B> Or<A, B> {
         }
     }
 
+    /// Extracts the second branch value, if present.
     pub fn into_right(self) -> Option<B> {
         match self {
             Or::Left(_) => None,
@@ -60,6 +71,7 @@ impl<A, B> Or<A, B> {
         }
     }
 
+    /// Borrows the active branch.
     pub fn as_ref(&self) -> Or<&A, &B> {
         match self {
             Or::Left(value) => Or::Left(value),
@@ -67,6 +79,7 @@ impl<A, B> Or<A, B> {
         }
     }
 
+    /// Mutably borrows the active branch.
     pub fn as_mut(&mut self) -> Or<&mut A, &mut B> {
         match self {
             Or::Left(value) => Or::Left(value),
@@ -74,6 +87,7 @@ impl<A, B> Or<A, B> {
         }
     }
 
+    /// Maps the first branch value.
     pub fn map_left<C, F>(self, map: F) -> Or<C, B>
     where
         F: FnOnce(A) -> C,
@@ -84,6 +98,7 @@ impl<A, B> Or<A, B> {
         }
     }
 
+    /// Maps the second branch value.
     pub fn map_right<C, F>(self, map: F) -> Or<A, C>
     where
         F: FnOnce(B) -> C,
@@ -94,6 +109,7 @@ impl<A, B> Or<A, B> {
         }
     }
 
+    /// Applies the matching function to either branch.
     pub fn either<T, FL, FR>(self, left: FL, right: FR) -> T
     where
         FL: FnOnce(A) -> T,
