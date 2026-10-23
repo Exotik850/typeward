@@ -2,7 +2,6 @@ use super::{ParseOffsetContext, ParseOffsetInput, with_parse_offset_scope};
 use crate::error::{ParseError, ParseResult};
 use crate::input::{BorrowInput, Input};
 use std::borrow::Cow;
-use std::marker::PhantomData;
 
 /// A trait for types that can be parsed from an abstract input.
 ///
@@ -244,15 +243,6 @@ where
 {
     fn partial_cmp(&self, other: &T) -> Option<std::cmp::Ordering> {
         self.0.as_ref().partial_cmp(other)
-    }
-}
-
-impl<'a, I, T> Parse<'a, I> for PhantomData<T>
-where
-    I: Input<'a>,
-{
-    fn parse_with_context(input: I, _context: &mut ParseOffsetContext) -> ParseResult<(Self, I)> {
-        Ok((PhantomData, input))
     }
 }
 
