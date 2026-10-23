@@ -10,24 +10,24 @@ pub struct Repeat<T, const MIN: usize, const MAX: usize> {
 
 impl<T, const MIN: usize, const MAX: usize> Repeat<T, MIN, MAX> {
     /// Returns the parsed items.
-        /// Returns the parsed items and consumes the wrapper.
-        /// Returns the number of parsed items.
-        /// Returns whether no items were parsed.
     #[must_use]
     pub fn items(&self) -> &[T] {
         &self.items
     }
-
+    
+    /// Returns the parsed items and consumes the wrapper.
     #[must_use]
     pub fn into_items(self) -> Vec<T> {
         self.items
     }
 
+    /// Returns the number of parsed items.
     #[must_use]
     pub fn len(&self) -> usize {
         self.items.len()
     }
 
+    /// Returns whether no items were parsed.
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.items.is_empty()
@@ -88,9 +88,9 @@ pub struct RepeatUntil<T, U> {
 
 impl<T, U> RepeatUntil<T, U> {
     /// Returns the parsed items.
-        /// Returns the parsed items and consumes the wrapper.
-        /// Returns the number of parsed items.
-        /// Returns whether no items were parsed.
+    /// Returns the parsed items and consumes the wrapper.
+    /// Returns the number of parsed items.
+    /// Returns whether no items were parsed.
     #[must_use]
     pub fn items(&self) -> &[T] {
         &self.items
