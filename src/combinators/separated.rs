@@ -46,6 +46,7 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         match self.state {
             SeparatedIterState::First | SeparatedIterState::Item => {
+                let parsing_first_item = self.state == SeparatedIterState::First;
                 match T::parse_with_context(self.input, self.context) {
                     Ok((item, rest)) => {
                         if let Err(e) =
@@ -58,7 +59,11 @@ where
                         Some(Ok(Or::Left(Or::Left(item))))
                     }
                     Err(err) if err.is_fatal() => Some(Err(err)),
-                    Err(_) => None,
+                    Err(_) if parsing_first_item => None,
+                    Err(_) => {
+                        self.state = SeparatedIterState::Done;
+                        Some(Ok(Or::Right(self.input)))
+                    }
                 }
             }
             SeparatedIterState::Separator => {
@@ -292,6 +297,14 @@ mod tests {
         let (result, rest) = Separated0::<AlphaString, Comma>::parse("a,b,c;").unwrap();
         assert_eq!(result.items().len(), 3);
         assert_eq!(result.separators().len(), 2);
+        assert_eq!(rest, ";");
+    }
+
+    #[test]
+    fn separated0_parses_trailing_separator() {
+        let (result, rest) = Separated0::<AlphaString, Comma>::parse("a,b,c,;").unwrap();
+        assert_eq!(result.items().len(), 3);
+        assert_eq!(result.separators().len(), 3);
         assert_eq!(rest, ";");
     }
 }
