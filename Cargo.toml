@@ -26,6 +26,10 @@ macros = ["typeward-macros"]
 name = "json"
 path = "examples/json.rs"
 
+[[example]]
+name = "sql"
+path = "examples/sql.rs"
+
 [[bench]]
 name = "hot_paths"
 harness = false
