@@ -1,9 +1,5 @@
 use crate::{
-    combinators::ignore::Trim,
-    error::ParseResult,
-    literals::Comma,
-    parse::Parse,
-    prelude::Or,
+    combinators::ignore::Trim, error::ParseResult, literals::Comma, parse::Parse, prelude::Or,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -4,12 +4,12 @@ pub mod cut;
 pub mod delim_nested;
 pub mod delimited;
 pub mod ignore;
+pub mod iter;
 pub mod keyword;
 pub mod left_assoc;
 pub mod map;
 pub mod not;
 pub mod or;
-pub mod iter;
 pub mod peek;
 pub mod separated;
 pub mod span;
@@ -21,8 +21,7 @@ pub use cut::{Commit, Cut};
 pub use delim_nested::{Braced, Bracketed, DelimNested, Parenthesized};
 pub use delimited::{Delimited, DelimitedExact, Padded, PaddedExact};
 pub use ignore::{
-    Between, Forget, Ignore, IgnoreMany, IgnoreMany1, Preceded, Terminated, Trim,
-    Count,
+    Between, Count, Forget, Ignore, IgnoreMany, IgnoreMany1, Preceded, Terminated, Trim,
 };
 pub use keyword::{IdentBoundary, Keyword, KeywordBoundary, Kw};
 pub use left_assoc::LeftAssoc;
