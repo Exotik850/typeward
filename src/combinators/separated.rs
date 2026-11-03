@@ -1,9 +1,5 @@
 use crate::{
-    combinators::ignore::Trim,
-    error::ParseResult,
-    literals::Comma,
-    parse::Parse,
-    prelude::Or,
+    combinators::ignore::Trim, error::ParseResult, literals::Comma, parse::Parse, prelude::Or,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -133,6 +129,17 @@ macro_rules! separated_type {
             #[must_use]
             pub fn into_parts(self) -> (Vec<T>, Vec<S>) {
                 (self.items, self.separators)
+            }
+            /// Zips the items and separators into an iterator of pairs.
+            #[must_use]
+            pub fn zip(self) -> impl Iterator<Item = (T, Option<S>)> {
+                let mut items = self.items.into_iter();
+                let mut separators = self.separators.into_iter();
+                std::iter::from_fn(move || {
+                    let item = items.next()?;
+                    let separator = separators.next();
+                    Some((item, separator))
+                })
             }
         }
     };
@@ -305,6 +312,18 @@ mod tests {
         let (result, rest) = Separated0::<AlphaString, Comma>::parse("a,b,c,;").unwrap();
         assert_eq!(result.items().len(), 3);
         assert_eq!(result.separators().len(), 3);
+        assert_eq!(rest, ";");
+    }
+
+    #[test]
+    fn separated_zip_works() {
+        let (result, rest) = CommaSeparated::<AlphaString>::parse("a,b,c;").unwrap();
+        let zipped: Vec<_> = result.zip().collect();
+        assert_eq!(zipped.len(), 3);
+        assert!(matches!(&zipped[0], (s, Some(_)) if *s == "a"));
+        assert!(matches!(&zipped[1], (s, Some(_)) if *s == "b"));
+        assert!(matches!(&zipped[2], (s, None) if *s == "c"));
+        assert_eq!(rest, ";");
         assert_eq!(rest, ";");
     }
 }
