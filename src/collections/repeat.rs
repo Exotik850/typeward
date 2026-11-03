@@ -21,14 +21,14 @@ impl<T, const MIN: usize, const MAX: usize> Repeat<T, MIN, MAX> {
         self.items
     }
 
-    #[must_use]
     /// Returns the number of parsed items.
+    #[must_use]
     pub fn len(&self) -> usize {
         self.items.len()
     }
 
-    #[must_use]
     /// Returns whether no items were parsed.
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.items.is_empty()
     }

@@ -20,7 +20,7 @@ typeward is designed as a lightweight alternative to `syn` for general-purpose p
 
 ```toml
 [dependencies]
-typeward = "0.2"
+typeward = "0.3"
 ```
 
 The `macros` feature (enabled by default) provides the `#[derive(Parse)]` macro. Disable it with `default-features = false` if you only need the combinator library.
@@ -31,7 +31,7 @@ The `macros` feature (enabled by default) provides the `#[derive(Parse)]` macro.
 use typeward::prelude::*;
 
 // Parse a complete input string
-let (value, rest) = parse_complete::<f64>("3.14 remainder")?;
+let value = parse_complete::<f64>("3.14 remainder")?;
 ```
 
 Import the prelude to get access to core traits, combinators, primitives, and the derive macro:

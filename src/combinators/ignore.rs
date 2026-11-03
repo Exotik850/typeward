@@ -9,8 +9,7 @@ use crate::{
 /// A wrapper parser that ignores the output of `T`.
 ///
 /// This is useful for parsing things like delimiters or keywords that don't need to be retained in the output.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Default, Copy)]
-pub struct Ignore<T>(PhantomData<T>);
+pub type Ignore<T> = PhantomData<T>;
 
 /// Type alias for `Ignore<T>`, indicating that the output of `T` is intentionally discarded.
 pub type Forget<T> = Ignore<T>;
@@ -31,15 +30,7 @@ impl<T> Trim<T> {
     }
 }
 
-impl<T> Ignore<T> {
-    /// Creates an ignore wrapper without parsing.
-    #[must_use]
-    pub fn new() -> Self {
-        Self(PhantomData)
-    }
-}
-
-impl<'a, I, T> Parse<'a, I> for Ignore<T>
+impl<'a, I, T> Parse<'a, I> for PhantomData<T>
 where
     I: crate::input::Input<'a>,
     T: Parse<'a, I>,
@@ -50,7 +41,7 @@ where
         context: &mut crate::parse::ParseOffsetContext,
     ) -> ParseResult<(Self, I)> {
         let (_, input) = T::parse_with_context(input, context)?;
-        Ok((Self::new(), input))
+        Ok((PhantomData, input))
     }
 }
 
@@ -161,13 +152,15 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::prelude::*;
+    use std::marker::PhantomData;
+
+use crate::prelude::*;
 
     #[test]
     fn test_ignore() {
         let input = "abc";
         let result = Ignore::<Alpha>::parse(input).unwrap();
-        assert_eq!(result.0, Ignore::new());
+        assert_eq!(result.0, PhantomData);
         assert_eq!(result.1, "");
     }
 

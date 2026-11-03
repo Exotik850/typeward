@@ -42,6 +42,7 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         match self.state {
             SeparatedIterState::First | SeparatedIterState::Item => {
+                let parsing_first_item = self.state == SeparatedIterState::First;
                 match T::parse_with_context(self.input, self.context) {
                     Ok((item, rest)) => {
                         if let Err(e) =
@@ -54,7 +55,11 @@ where
                         Some(Ok(Or::Left(Or::Left(item))))
                     }
                     Err(err) if err.is_fatal() => Some(Err(err)),
-                    Err(_) => None,
+                    Err(_) if parsing_first_item => None,
+                    Err(_) => {
+                        self.state = SeparatedIterState::Done;
+                        Some(Ok(Or::Right(self.input)))
+                    }
                 }
             }
             SeparatedIterState::Separator => {
@@ -124,6 +129,17 @@ macro_rules! separated_type {
             #[must_use]
             pub fn into_parts(self) -> (Vec<T>, Vec<S>) {
                 (self.items, self.separators)
+            }
+            /// Zips the items and separators into an iterator of pairs.
+            #[must_use]
+            pub fn zip(self) -> impl Iterator<Item = (T, Option<S>)> {
+                let mut items = self.items.into_iter();
+                let mut separators = self.separators.into_iter();
+                std::iter::from_fn(move || {
+                    let item = items.next()?;
+                    let separator = separators.next();
+                    Some((item, separator))
+                })
             }
         }
     };
@@ -288,6 +304,26 @@ mod tests {
         let (result, rest) = Separated0::<AlphaString, Comma>::parse("a,b,c;").unwrap();
         assert_eq!(result.items().len(), 3);
         assert_eq!(result.separators().len(), 2);
+        assert_eq!(rest, ";");
+    }
+
+    #[test]
+    fn separated0_parses_trailing_separator() {
+        let (result, rest) = Separated0::<AlphaString, Comma>::parse("a,b,c,;").unwrap();
+        assert_eq!(result.items().len(), 3);
+        assert_eq!(result.separators().len(), 3);
+        assert_eq!(rest, ";");
+    }
+
+    #[test]
+    fn separated_zip_works() {
+        let (result, rest) = CommaSeparated::<AlphaString>::parse("a,b,c;").unwrap();
+        let zipped: Vec<_> = result.zip().collect();
+        assert_eq!(zipped.len(), 3);
+        assert!(matches!(&zipped[0], (s, Some(_)) if *s == "a"));
+        assert!(matches!(&zipped[1], (s, Some(_)) if *s == "b"));
+        assert!(matches!(&zipped[2], (s, None) if *s == "c"));
+        assert_eq!(rest, ";");
         assert_eq!(rest, ";");
     }
 }
